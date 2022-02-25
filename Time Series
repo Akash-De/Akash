@@ -1,0 +1,687 @@
+
+
+
+# Clearing the Environment ------------------------------------------------
+rm(list = ls())
+
+
+
+# Loading Libraries -------------------------------------------------------
+library(lubridate)
+library("writexl")
+library(forecast)
+library(tis)
+library(ggplot2)
+library(plotly)
+library(urca)
+library(vars)
+library(dplyr)
+library(strucchange)
+library(readxl)
+library(mFilter)
+
+
+# Setting the Working Directory -------------------------------------------
+setwd("~/Desktop/Wolfe Small Project")
+
+
+
+
+# Loading the Data --------------------------------------------------------
+data <- read_excel("Wolfe data.xlsx")
+data_info <- read_excel("data guide.xlsx")
+output_gap <- read_excel("outputgap.xlsx")
+
+
+# Replacing All NAs with 0 ------------------------------------------------
+data[is.na(data)]=0
+
+
+
+
+##################### Preparing the Data ###############################
+
+
+# GDP ---------------------------------------------------------------------
+GDP_NOM <- ts(data[,49], start = 1968, frequency = 12)
+GDP_REAL <- ts(data[,50], start = 1968, frequency = 12)
+GDP_NOM.t <- ts(data[-c(1:383),49], start = 2000, frequency = 12)
+GDP_REAL.t <- ts(data[-c(1:383),50], start = 2000, frequency = 12)
+gap <- ts(output_gap[-c(1:3,218),2])
+GDP.NOM.agg <- aggregate(GDP_NOM, nfrequency = 4) # Converting it into Quarterly Frequency
+GDP.REAL.agg <- aggregate(GDP_REAL, nfrequency = 4)
+GDP.NOM.agg.t <- aggregate(GDP_NOM.t, nfrequency = 4)
+GDP.REAL.agg.t <- aggregate(GDP_REAL.t, nfrequency = 4)
+
+
+# Inflations --------------------------------------------------------------
+PCE <- ts(data[,2], start = 1968, frequency = 12)
+CPI <- ts(data[,3], start = 1968, frequency = 12)
+core_CPI <- ts(data[,4], start = 1968, frequency = 12)
+PPI <- ts(data[,5], start = 1968, frequency = 12)
+core_PPI <- ts(data[,6], start = 1968, frequency = 12)
+
+
+
+# Asset Classes -----------------------------------------------------------
+snp500 <- ts(data[,34], start = 1968, frequency = 12)
+russel <- ts(data[,35], start = 1968, frequency = 12)
+mcsi.eafe <- ts(data[,36], start = 1968, frequency = 12)
+mcsi.em <- ts(data[,37], start = 1968, frequency = 12)
+snp.global <- ts(data[,38], start = 1968, frequency = 12)
+treasury <- ts(data[,39], start = 1968, frequency = 12)
+hyb <- ts(data[,40], start = 1968, frequency = 12)
+em <- ts(data[,41], start = 1968, frequency = 12)
+snp.gsci <- ts(data[,42], start = 1968, frequency = 12)
+gold <- ts(data[,43], start = 1968, frequency = 12)
+oil <- ts(data[,44], start = 1968, frequency = 12)
+
+
+
+# Plots of the GDP --------------------------------------------------------
+layout(matrix(c(1,2), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+plot(log(GDP.NOM.agg),plot.type = "s", col = c("blue"), main = "Nominal GDP",xlab = "Time", ylab = "log GDP")
+plot(log(GDP.REAL.agg), plot.type = "s", col = c("red"), main = "Real GDP", xlab = "Time", ylab = "log GDP")
+layout(matrix(c(1,2), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+plot(log(GDP.NOM.agg.t),plot.type = "s", col = c("blue"), main = "Nominal GDP of US",xlab = "Time", ylab = "log Nominal GDP")
+abline(v=c(2009,2020))
+plot(log(GDP.REAL.agg.t), plot.type = "s", col = c("red"), main = "Real GDP of US", xlab = "Time", ylab = "log Real GDP")
+abline(v=c(2009,2020))
+plot(gap, plot.type = "s", col = c("red"), main = "Output GDP", xlab = "Time", ylab = "GDP")
+
+
+
+
+################## Trend-Cycle Decomposition for RGDP #######################
+
+
+# Hodrick–Prescott Filter Decomposition -----------------------------------
+hp.GDP_REAL <- hpfilter(log(GDP.REAL.agg.t))
+cycle.hp.GDP.REAL <- hp.GDP_REAL$cycle
+
+
+
+# Baxter-King Filter Decomposition ----------------------------------------
+bk.GDP_REAL <- bkfilter(log(GDP.REAL.agg.t))
+cycle.bk.GDP_REAL <- bk.GDP_REAL$cycle
+
+
+
+# Christiano-Fitzgerald Filter Decomposition ------------------------------
+cf.GDP_REAL <- cffilter(log(GDP.REAL.agg.t))
+cycle.cf.GDP_REAL <- cf.GDP_REAL$cycle
+
+
+
+# Beveridge Nelson Decomposition ------------------------------------------
+dGDP_REAL <- diff(log(GDP.REAL.agg.t)) # Differencing
+z <- dGDP_REAL 
+dm <- dGDP_REAL-mean(z) # Demeaning
+Y <- dm[2:86]
+X <- dm[1:85]
+beta <- solve(t(X)%*%X)%*%t(X)%*%Y # OLS estimation of VAR model
+f <- beta
+n <- 85
+ystar <- t(Y)
+I <- diag(1)
+cycle <- matrix(NA, nrow=1,ncol=n)
+for (i in 1:n){ 
+  ystar1=ystar[,i]
+  BN=f%*%solve(I-f)%*%ystar1
+  cycle[,i]=-BN
+}
+cycle <- t(cycle)
+cycle.bn.ts <- ts(data = cycle,start = 2000,frequency = 4)
+cycle.hp.ts <- ts(data = cycle.hp.GDP.REAL[2:87],start = 2000,frequency = 4)
+data.cycle <- ts(cbind(cycle,cycle.hp.GDP.REAL[3:87]),start = 2000,frequency = 4)
+
+
+
+
+
+# Plotting the Cycles -----------------------------------------------------
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+plot(cycle.hp.GDP.REAL, main = "Hodrick–Prescott Filter", ylab = "log GDP Cycle", col = "red")
+abline(h=0)
+abline(v=c(2009,2020))
+plot(cycle.bk.GDP_REAL, main = "Baxter-King Filter", ylab = "log GDP Cycle", col = "blue")
+abline(h=0)
+abline(v=c(2009,2020))
+plot(cycle.cf.GDP_REAL, main = "Christiano-Fitzgerald Filter", ylab = "log GDP Cycle", col = "brown")
+abline(h=0)
+abline(v=c(2009,2020))
+plot(cycle.bn.ts, main = "Beveridge Nelson Method", ylab = "log GDP Cycle", col = "green")
+abline(h=0)
+abline(v=c(2009,2020))
+
+
+# Taking an Average of the Cycles -----------------------------------------
+layout(matrix(c(1), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+cycle.REAL_GDP <- (cycle.hp.GDP.REAL[3:87] + cycle.bk.GDP_REAL[3:87] + cycle.cf.GDP_REAL[3:87] + cycle.bn.ts + gap[3:87])/5
+plot(cycle.bn.ts,ylab = "Average of HP, BK, CF, BN and Output gap", col = "red")
+abline(h=0)
+abline(v=c(2009,2020))
+
+
+
+
+################## Trend-Cycle Decomposition for NGDP #######################
+
+
+# Hodrick–Prescott Filter Decomposition -----------------------------------
+hp.GDP_NOM <- hpfilter(log(GDP.NOM.agg.t))
+cycle.hp.GDP.NOM <- hp.GDP_NOM$cycle
+
+
+
+# Baxter-King Filter Decomposition ----------------------------------------
+bk.GDP_NOM <- bkfilter(log(GDP.NOM.agg.t))
+cycle.bk.GDP_NOM <- bk.GDP_NOM$cycle
+
+
+
+# Christiano-Fitzgerald Filter Decomposition ------------------------------
+cf.GDP_NOM <- cffilter(log(GDP.NOM.agg.t))
+cycle.cf.GDP_NOM <- cf.GDP_NOM$cycle
+
+
+
+# Beveridge Nelson Decomposition ------------------------------------------
+dGDP_NOM <- diff(log(GDP.NOM.agg.t)) # Differencing
+z <- dGDP_NOM 
+dm <- dGDP_NOM-mean(z) # Demeaning
+Y <- dm[2:86]
+X <- dm[1:85]
+beta <- solve(t(X)%*%X)%*%t(X)%*%Y # OLS estimation of VAR model
+f <- beta
+n <- 85
+ystar <- t(Y)
+I <- diag(1)
+cycle <- matrix(NA, nrow=1,ncol=n)
+for (i in 1:n){ 
+  ystar1=ystar[,i]
+  BN=f%*%solve(I-f)%*%ystar1
+  cycle[,i]=-BN
+}
+cycle <- t(cycle)
+cycle.bn.ts <- ts(data = cycle,start = 2000,frequency = 4)
+cycle.hp.ts <- ts(data = cycle.hp.GDP.NOM[2:87],start = 2000,frequency = 4)
+data.cycle <- ts(cbind(cycle,cycle.hp.GDP.NOM[3:87]),start = 2000,frequency = 4)
+
+
+
+# Plotting the Cycles -----------------------------------------------------
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+plot(cycle.hp.GDP.NOM, main = "Hodrick–Prescott Filter", ylab = "log GDP Cycle", col = "red")
+abline(h=0)
+abline(v=c(2009,2020))
+plot(cycle.bk.GDP_NOM, main = "Baxter-King Filter", ylab = "log GDP Cycle", col = "blue")
+abline(h=0)
+abline(v=c(2009,2020))
+plot(cycle.cf.GDP_NOM, main = "Christiano-Fitzgerald Filter", ylab = "log GDP Cycle", col = "brown")
+abline(h=0)
+abline(v=c(2009,2020))
+plot(cycle.bn.ts, main = "Beveridge Nelson Method", ylab = "log GDP Cycle", col = "green")
+abline(h=0)
+abline(v=c(2009,2020))
+
+
+
+# Taking an Average of the Cycles -----------------------------------------
+layout(matrix(c(1), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+cycle.NOM_GDP <- (cycle.hp.GDP.NOM[3:87] + cycle.bk.GDP_NOM[3:87] + cycle.cf.GDP_NOM[3:87] + cycle.bn.ts + gap[3:87])/5
+plot(cycle.bn.ts,ylab = "Average of HP, BK, CF, BN and Output gap", col = "blue")
+abline(h=0)
+abline(v=c(2009,2020))
+
+
+################### Correlograms of the CPI #########################
+
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+acf(PCE, main = "ACF for PCE", col = "red")
+pacf(PCE, main = "PACF for PCE", col = "red")
+acf(CPI, main = "ACF for CPI", col = "blue")
+pacf(CPI, main = "PACF for CPI", col = "blue")
+
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+acf(core_CPI, main = "ACF for Core CPI", col = "brown")
+pacf(core_CPI, main = "PACF for Core CPI", col = "brown")
+acf(PPI, main = "ACF for PPI", col = "green")
+pacf(PPI, main = "PACF for PPI", col = "green")
+
+layout(matrix(c(1,2), 1, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+acf(core_PPI, main = "ACF for Core PPI", col = "orange")
+pacf(core_PPI, main = "PACF for Core PPI", col = "orange")
+
+
+# Checking for Time Series of CPI -----------------------------------------
+auto.arima(PCE)
+auto.arima(CPI)
+auto.arima(core_CPI)
+auto.arima(PPI)
+auto.arima(core_PPI)
+
+
+
+##################### Running Unit Root Tests ########################
+
+
+# Augmented Dickey Fuller Test --------------------------------------------
+PCE.adf <- ur.df(PCE, type ="drift", selectlags = "AIC")
+CPI.adf <- ur.df(CPI, type ="drift", selectlags = "AIC") 
+core_CPI.adf <- ur.df(core_CPI, type ="drift", selectlags = "AIC") 
+PPI.adf <- ur.df(PPI, type ="drift", selectlags = "AIC") 
+core_PPI.adf <- ur.df(core_PPI, type ="drift", selectlags = "AIC") 
+
+
+# Philips-Perron Test -----------------------------------------------------
+PCE.pp <- ur.pp(PCE,type = "Z-tau", model="constant") 
+CPI.pp <- ur.pp(CPI,type = "Z-tau", model="constant") 
+core_CPI.pp <- ur.pp(core_CPI,type = "Z-tau", model="constant") 
+PPI.pp <- ur.pp(PPI,type = "Z-tau", model="constant") 
+core_PPI.pp <- ur.pp(core_PPI,type = "Z-tau", model="constant")
+
+
+
+###################### Getting the Summary ###########################
+
+# Augmented Dickey Fuller Test --------------------------------------------
+summary(PCE.adf)
+summary(CPI.adf)
+summary(core_CPI.adf)
+summary(PPI.adf)
+summary(core_PPI.adf)
+
+# Philips-Perron Test -----------------------------------------------------
+summary(PCE.pp)
+summary(CPI.pp)
+summary(core_CPI.pp)
+summary(PPI.pp)
+summary(core_PPI.pp)
+
+#### Comment: Not persistent.
+
+
+######################### Sensitivity Analysis #############################
+
+# Using AR Model ----------------------------------------------------------
+m1 <- lm(log(snp500[242:644]) ~ PCE[241:643]) # The inflation are already in log changes
+m2 <- lm(log(snp500[242:644]) ~ CPI[241:643])
+m3 <- lm(log(snp500[242:644]) ~ core_CPI[241:643])
+m4 <- lm(log(snp500[242:644]) ~ PPI[241:643])
+m5 <- lm(log(snp500[242:644]) ~ core_PPI[241:643])
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+summary(m5)
+
+
+# Using VAR Model ---------------------------------------------------------
+data.sensi <- cbind(log(snp500[241:644]),PCE[241:644])
+data.sensi <- cbind(data.sensi,CPI[241:644])
+data.sensi <- cbind(data.sensi,core_CPI[241:644])
+data.sensi <- cbind(data.sensi,PPI[241:644])
+data.sensi <- cbind(data.sensi,core_PPI[241:644])
+colnames(data.sensi) <- c("ln.snp500","ln.PCE","ln.CPI","ln.core_CPI","ln.PPI","ln.core_PPI")
+model.sensi = VAR(data.sensi,type="const",ic="AIC")
+summary(model.sensi)
+
+
+
+
+####################### Bai and Perron Structural Break Test ########################
+
+snp500.t <- snp500[242:644]
+snp500.lag <- snp500[241:643]
+snp500.mod <- snp500.t ~ snp500.lag
+bp.snp500 <-  breakpoints(snp500.mod , data = snp500,h=0.15)
+summary(bp.snp500)
+
+### No Breakpoints found.
+
+
+
+
+########################### CUSUM Structural Break Test ############################
+
+ols.snp500 <- efp(snp500.mod, data = snp500, type = "OLS-CUSUM")
+
+
+# SUP-F STATISTIC ---------------------------------------------------------
+snp500.fs <- Fstats(snp500.mod, data = snp500, from = 0.15)
+plot(snp500.fs)
+sctest(snp500.fs) ##structural break test for null of no break
+
+
+
+
+# Plotting the Test Results -----------------------------------------------
+
+layout(matrix(c(1,2), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(3,3))
+plot(bp.snp500,main = "Bai and Perron test for S&P500 Total Returns")
+plot(ols.snp500, main = "OLS-based CUSUM test for S&P500 Total Returns", col = "blue")
+
+
+######################## Forecasting Exercise ###########################
+
+
+# Defining the number of iteration ----------------------------------------
+n.end <- 585
+t <- 644
+n <- t-n.end
+
+
+
+# Creating empty matrices -------------------------------------------------
+pred_snp500.out.ar <-  matrix(rep(0,60*n),n,60)
+pred_snp.global.out.ar <-  matrix(rep(0,60*n),n,60)
+pred_snp.gsci.out.ar <-  matrix(rep(0,60*n),n,60)
+pred_russel.out.ar <-  matrix(rep(0,60*n),n,60)
+pred_treasury.out.ar <-  matrix(rep(0,60*n),n,60)
+pred_hyb.out.ar <-  matrix(rep(0,60*n),n,60)
+pred_em.out.ar <-  matrix(rep(0,60*n),n,60)
+pred_oil.out.ar <-  matrix(rep(0,60*n),n,60)
+
+
+############### Out-of-sample Forecasting with AR series ###############
+
+
+# Running the loop --------------------------------------------------------
+for(i in 1:n){
+  snp500
+  snp.global
+  snp.gsci
+  russel
+  mcsi.eafe
+  mcsi.em
+  treasury
+  hyb
+  em
+  gold
+  oil
+  x_snp500 = snp500[1:(n.end+i-1)]
+  x_snp.global = snp.global[1:(n.end+i-1)]
+  x_snp.gsci = snp.gsci[1:(n.end+i-1)]
+  x_russel = russel[1:(n.end+i-1)]
+  x_treasury = treasury[1:(n.end+i-1)]
+  x_hyb = hyb[1:(n.end+i-1)]
+  x_em = em[1:(n.end+i-1)]
+  x_oil = oil[1:(n.end+i-1)]
+  
+  model.out.snp500.ar = auto.arima(x_snp500)
+  model.out.snp.global.ar = auto.arima(x_snp.global, allowdrift = FALSE)
+  model.out.snp.gsci.ar = auto.arima(x_snp.gsci)
+  model.out.russel.ar = auto.arima(x_russel, allowdrift = FALSE)
+  model.out.treasury.ar = auto.arima(x_treasury)
+  model.out.hyb.ar = auto.arima(x_hyb)
+  model.out.em.ar = auto.arima(x_em)
+  model.out.oil.ar = auto.arima(x_oil, allowdrift = FALSE)
+  
+  for_snp500.out.ar = predict(model.out.snp500.ar,n.ahead = 60,se.fit=FALSE)
+  for_snp.global.out.ar = predict(model.out.snp.global.ar,n.ahead = 60,se.fit=FALSE)
+  for_snp.gsci.out.ar = predict(model.out.snp.gsci.ar,n.ahead = 60,se.fit=FALSE)
+  for_russel.out.ar = predict(model.out.russel.ar,n.ahead = 60,se.fit=FALSE)
+  for_treasury.out.ar = predict(model.out.treasury.ar,n.ahead = 60,se.fit=FALSE)
+  for_hyb.out.ar = predict(model.out.hyb.ar,n.ahead = 60,se.fit=FALSE)
+  for_em.out.ar = predict(model.out.em.ar,n.ahead = 60,se.fit=FALSE)
+  for_oil.out.ar = predict(model.out.oil.ar,n.ahead = 60,se.fit=FALSE)
+  
+  pred_snp500.out.ar[i,1:60] = for_snp500.out.ar
+  pred_snp.global.out.ar[i,1:60] = for_snp.global.out.ar
+  pred_snp.gsci.out.ar[i,1:60] = for_snp.gsci.out.ar
+  pred_russel.out.ar[i,1:60] = for_russel.out.ar
+  pred_treasury.out.ar[i,1:60] = for_treasury.out.ar
+  pred_hyb.out.ar[i,1:60] = for_hyb.out.ar
+  pred_em.out.ar[i,1:60] = for_em.out.ar
+  pred_oil.out.ar[i,1:60] = for_oil.out.ar
+}
+
+
+forecast_snp500.out.ar <- pred_snp500.out.ar[,60]
+forecast_snp.global.out.ar <- pred_snp.global.out.ar[,60]
+forecast_snp.gsci.out.ar <- pred_snp.gsci.out.ar[,60]
+forecast_russel.out.ar <- pred_russel.out.ar[,60]
+forecast_treasury.out.ar <- pred_treasury.out.ar[,60]
+forecast_hyb.out.ar <- pred_hyb.out.ar[,60]
+forecast_em.out.ar <- pred_em.out.ar[,60]
+forecast_oil.out.ar <- pred_oil.out.ar[,60]
+
+
+
+
+#################### In sample Forecasting with AR series #######################
+
+model.in.snp500.ar <- auto.arima(snp500)
+model.in.snp.global.ar <- auto.arima(snp.global)
+model.in.snp.gsci.ar <- auto.arima(snp.gsci)
+model.in.russel.ar <- auto.arima(russel)
+model.in.treasury.ar <- auto.arima(treasury)
+model.in.hyb.ar <- auto.arima(hyb)
+model.in.em.ar <- auto.arima(em)
+model.in.oil.ar <- auto.arima(oil)
+
+for_snp500.in.ar <- predict(model.in.snp500.ar,n.ahead = 60)
+for_snp.global.in.ar <- predict(model.in.snp.global.ar,n.ahead = 60)
+for_snp.gsci.in.ar <- predict(model.in.snp.gsci.ar,n.ahead = 60)
+for_russel.in.ar <- predict(model.in.russel.ar,n.ahead = 60)
+for_treasury.in.ar <- predict(model.in.treasury.ar,n.ahead = 60)
+for_hyb.in.ar <- predict(model.in.hyb.ar,n.ahead = 60)
+for_em.in.ar <- predict(model.in.em.ar,n.ahead = 60)
+for_oil.in.ar <- predict(model.in.oil.ar,n.ahead = 60)
+
+pred_snp500.in.ar <- for_snp500.in.ar$pred
+pred_snp.global.in.ar <- for_snp.global.in.ar$pred
+pred_snp.gsci.in.ar <- for_snp.gsci.in.ar$pred
+pred_russel.in.ar <- for_russel.in.ar$pred
+pred_treasury.in.ar <- for_treasury.in.ar$pred
+pred_hyb.in.ar <- for_hyb.in.ar$pred
+pred_em.in.ar <- for_em.in.ar$pred
+pred_oil.in.ar <- for_oil.in.ar$pred
+
+
+################# Forecasting with a VAR system ###################
+
+data.for <- cbind(snp500,snp.global)
+data.for <- cbind(data.for,snp.gsci)
+data.for <- cbind(data.for,russel)
+data.for <- cbind(data.for,treasury)
+data.for <- cbind(data.for,hyb)
+data.for <- cbind(data.for,em)
+data.for <- cbind(data.for,oil)
+colnames(data.for) <- c("snp500","snp.global","snp.gsci","russel","treasury","hyb","em","oil")
+       
+                  
+
+
+# Creating empty matrices -------------------------------------------------
+pred_snp500.var <-  matrix(rep(0,60*n),n,60)
+pred_snp.global.var <-  matrix(rep(0,60*n),n,60)
+pred_snp.gsci.var <-  matrix(rep(0,60*n),n,60)
+pred_russel.var <-  matrix(rep(0,60*n),n,60)
+pred_treasury.var <-  matrix(rep(0,60*n),n,60)
+pred_hyb.var <-  matrix(rep(0,60*n),n,60)
+pred_em.var <-  matrix(rep(0,60*n),n,60)
+pred_oil.var <-  matrix(rep(0,60*n),n,60)
+
+
+
+# Running the loop --------------------------------------------------------
+for(i in 1:n){
+  data.for
+  x_data.for = data.for[1:(n.end+i-1),]
+
+  snp500.ts = ts(snp500[1:(n.end+i-1)])
+  snp.global.ts = ts(snp.global[1:(n.end+i-1)])
+  snp.gsci.ts = ts(snp.gsci[1:(n.end+i-1)])
+  russel.ts = ts(russel[1:(n.end+i-1)])
+  treasury.ts = ts(treasury[1:(n.end+i-1)])
+  hyb.ts = ts(hyb[1:(n.end+i-1)])
+  em.ts = ts(em[1:(n.end+i-1)])
+  oil.ts = ts(oil[1:(n.end+i-1)])
+  
+  model.var = VAR(x_data.for,type="const",ic="AIC")
+  for_var = predict(model.var,n.ahead=60,se.fit=FALSE)
+  
+  pred_snp500.var[i,1:60] = for_var$fcst$snp500[1:60]
+  pred_snp.global.var[i,1:60] = for_var$fcst$snp.global[1:60]
+  pred_snp.gsci.var[i,1:60] = for_var$fcst$snp.gsci[1:60]
+  pred_russel.var[i,1:60] = for_var$fcst$russel[1:60]
+  pred_treasury.var[i,1:60] = for_var$fcst$treasury[1:60]
+  pred_hyb.var[i,1:60] = for_var$fcst$hyb[1:60]
+  pred_em.var[i,1:60] = for_var$fcst$em[1:60]
+  pred_snp500.var[i,1:60] = for_var$fcst$snp500[1:60]
+  pred_oil.var[i,1:60] = for_var$fcst$oil[1:60]
+}
+
+
+forecast_snp500.var <- pred_snp500.var[,60]
+forecast_snp.global.var <- pred_snp.global.var[,60]
+forecast_snp.gsci.var <- pred_snp.gsci.var[,60]
+forecast_russel.var <- pred_russel.var[,60]
+forecast_treasury.var <- pred_treasury.var[,60]
+forecast_hyb.var <- pred_hyb.var[,60]
+forecast_em.var <- pred_em.var[,60]
+forecast_oil.var <- pred_oil.var[,60]
+
+
+#################### In Sample Forecast ######################
+
+in.sample.var <- VAR(data.for,type = "const", ic = "AIC")
+for.in.sample <- predict(in.sample.var,n.ahead = 60,se.fit=FALSE)
+pred_in.sample.var_snp500 <- for.in.sample$fcst$snp500[,1]
+pred_in.sample.var_snp.global <- for.in.sample$fcst$snp.global[,1]
+pred_in.sample.var_snp.gsci <- for.in.sample$fcst$snp.gsci[,1]
+pred_in.sample.var_russel<- for.in.sample$fcst$russel[,1]
+pred_in.sample.var_treasury <- for.in.sample$fcst$treasury[,1]
+pred_in.sample.var_hyb <- for.in.sample$fcst$hyb[,1]
+pred_in.sample.var_em <- for.in.sample$fcst$em[,1]
+pred_in.sample.var_oil <- for.in.sample$fcst$oil[,1]
+
+
+##################### Result Comparison #######################
+
+assets <- data[,1]
+assets <- cbind(assets,data[,34])
+assets <- cbind(assets,data[,35])
+assets <- cbind(assets,data[,38])
+assets <- cbind(assets,data[,42])
+assets <- cbind(assets,data[,39])
+assets <- cbind(assets,data[,40])
+assets <- cbind(assets,data[,41])
+assets <- cbind(assets,data[,44])
+
+
+# Creating a Date Vector --------------------------------------------------
+predicted <- data.frame(seq(as.Date("2021-09-30"), as.Date("2026-07-31"), by = "months"))
+
+
+# Out-of-Sample AR --------------------------------------------------------
+forecasted.out.ar <- cbind(predicted,forecast_snp500.out.ar)
+forecasted.out.ar <- cbind(forecasted.out.ar,forecast_snp.global.out.ar)
+forecasted.out.ar <- cbind(forecasted.out.ar,forecast_snp.gsci.out.ar)
+forecasted.out.ar <- cbind(forecasted.out.ar,forecast_russel.out.ar)
+forecasted.out.ar <- cbind(forecasted.out.ar,forecast_treasury.out.ar)
+forecasted.out.ar <- cbind(forecasted.out.ar,forecast_hyb.out.ar)
+forecasted.out.ar <- cbind(forecasted.out.ar,forecast_em.out.ar)
+forecasted.out.ar <- cbind(forecasted.out.ar,forecast_oil.out.ar)
+
+
+
+
+# In Sample AR ------------------------------------------------------------
+forecasted.in.ar <- cbind.data.frame(predicted,pred_snp500.in.ar[-60])
+forecasted.in.ar <- cbind.data.frame(forecasted.in.ar,pred_snp.global.in.ar[-60])
+forecasted.in.ar <- cbind.data.frame(forecasted.in.ar,pred_snp.gsci.in.ar[-60])
+forecasted.in.ar <- cbind.data.frame(forecasted.in.ar,pred_russel.in.ar[-60])
+forecasted.in.ar <- cbind.data.frame(forecasted.in.ar,pred_treasury.in.ar[-60])
+forecasted.in.ar <- cbind.data.frame(forecasted.in.ar,pred_hyb.in.ar[-60])
+forecasted.in.ar <- cbind.data.frame(forecasted.in.ar,pred_em.in.ar[-60])
+forecasted.in.ar <- cbind.data.frame(forecasted.in.ar,pred_oil.in.ar[-60])
+
+
+
+
+
+# Out-of-Sample VAR -------------------------------------------------------
+forecasted.out.var <- cbind(predicted,forecast_snp500.var)
+forecasted.out.var <- cbind(forecasted.out.var,forecast_snp.global.var)
+forecasted.out.var <- cbind(forecasted.out.var,forecast_snp.gsci.var)
+forecasted.out.var <- cbind(forecasted.out.var,forecast_russel.var)
+forecasted.out.var <- cbind(forecasted.out.var,forecast_treasury.var)
+forecasted.out.var <- cbind(forecasted.out.var,forecast_hyb.var)
+forecasted.out.var <- cbind(forecasted.out.var,forecast_em.var)
+forecasted.out.var <- cbind(forecasted.out.var,forecast_oil.var)
+
+
+
+
+
+# In Sample VAR -----------------------------------------------------------
+forecasted.in.var <- cbind(predicted,pred_in.sample.var_snp500[-60])
+forecasted.in.var <- cbind(forecasted.in.var,pred_in.sample.var_snp.global[-60])
+forecasted.in.var <- cbind(forecasted.in.var,pred_in.sample.var_snp.gsci[-60])
+forecasted.in.var <- cbind(forecasted.in.var,pred_in.sample.var_russel[-60])
+forecasted.in.var <- cbind(forecasted.in.var,pred_in.sample.var_treasury[-60])
+forecasted.in.var <- cbind(forecasted.in.var,pred_in.sample.var_hyb[-60])
+forecasted.in.var <- cbind(forecasted.in.var,pred_in.sample.var_em[-60])
+forecasted.in.var <- cbind(forecasted.in.var,pred_in.sample.var_oil[-60])
+
+
+
+
+################## Compiling Results ###################
+
+colnames(forecasted.out.ar) <- colnames(assets)
+colnames(forecasted.in.ar) <- colnames(assets)
+colnames(forecasted.out.var) <- colnames(assets)
+colnames(forecasted.in.var) <- colnames(assets)
+
+grand_results.in.ar <- rbind(assets,forecasted.in.ar)
+grand_results.out.ar <- rbind(assets,forecasted.out.ar)
+grand_results.in.var <- rbind(assets,forecasted.in.var)
+grand_results.out.var <- rbind(assets,forecasted.out.var)
+
+
+
+
+
+
+################## Saving the result datasets ####################
+
+write_xlsx(forecasted.in.ar,"Results for in-sample AR.xlsx")
+write_xlsx(forecasted.out.ar,"Results for out-of-sample AR.xlsx")
+write_xlsx(forecasted.in.var,"Results for in-sample VAR.xlsx")
+write_xlsx(forecasted.out.var,"Results for out-of-sample VAR.xlsx")
+
+
+
+
+
+################### Using Forecast Function #####################
+
+# Autoplots ---------------------------------------------------------------
+d.forecast <- forecast(model.in.snp500.ar, level = c(95), h = 60) # Forecasted plots with CI
+autoplot(d.forecast)
+
+
+# Plot Forecast with Confidence Band --------------------------------------
+
+# ts.plot(pred_snp500.in.ar , xlim = c(2021, 2026)) + points(pred_snp500.in.ar, 
+                                                           #type = "l", col = "blue") + points(pred_snp500.in.ar - 2*pred_snp500.in.ar.se, type = "l", col = 2, lty = 2) + points(pred_snp500.in.ar + 2*pred_snp500.in.ar.se, type = "l", col = 2, lty = 2)
+
+
+
+
+
+
