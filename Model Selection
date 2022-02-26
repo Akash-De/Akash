@@ -1,0 +1,353 @@
+
+# Setting the working directory -------------------------------------------
+
+setwd("D:/Desktop/Econ-835/R Codes/Model Selection")
+
+
+# Simulating a Gaussian White noise process 1000 times with 0 mean
+# and 0.5 as s.d. --------------------
+
+y=as.ts(rnorm(1000,0,0.5))
+
+
+
+
+# Plotting the process with limit (-3,3)----------------------------------------------------
+
+layout(1)
+plot(y,col="orange",ylim=c(-3,3),ann=FALSE)
+
+
+
+# Dividing at h=0 ---------------------------------------------------------
+
+abline(h=0)
+
+
+
+# Simulating an AR(1) or ARMA(1,0,0) process 1000 times------------------------------
+
+# arima.sim is a function to simulate ARMA --------------------------------
+
+
+# I am giving this data the name bua --------------------------------------
+
+bua1=arima.sim(n=1000,list(ar=.975,ma=0))
+
+
+
+
+# Simulating some more ----------------------------------------------------
+
+bua2=arima.sim(n=1000,list(ar=.95,ma=0))
+bua3=arima.sim(n=1000,list(ar=.86,ma=0))
+bua4=arima.sim(n=1000,list(ar=.48,ma=0))
+
+
+# Plotting the time series ------------------------------------------------
+
+
+# Creating the margin box -------------------------------------------------
+
+layout(matrix(c(1,2,3,4),2,2))
+plot(bua1,col="pink",ann=FALSE)
+
+
+
+# Dividing at h=0 ---------------------------------------------------------
+
+abline(h=0)
+
+
+
+# Writing the coeficient value as a text ----------------------------------
+
+mtext("phi = 0.975")
+
+
+
+# Doing the same for the other series -------------------------------------
+
+
+
+plot(bua2,col="green",ann=FALSE)
+abline(h=0)
+mtext("phi = 0.95")
+
+
+plot(bua3,col="red",ann=FALSE)
+abline(h=0)
+mtext("phi = 0.86")
+
+
+
+plot(bua4,col="black",ann=FALSE)
+abline(h=0)
+mtext("phi = 0.48")
+
+
+
+# Correlograms for these series -------------------------------------------
+
+acf(bua1)
+pacf(bua1)
+
+
+acf(bua2)
+pacf(bua2)
+
+
+acf(bua3)
+pacf(bua3)
+
+
+acf(bua4)
+pacf(bua4)
+
+
+
+# How to choose a model from the simulated unknown DGP? -------------------
+
+
+# Constructed example -----------------------------------------------------
+
+
+# Creating an AR(2) prrocess of 10000 numbers------------------------------
+
+bua.ar2=arima.sim(n=10000,list(ar=c(1.3,-0.5),ma=0),sd=0.6)
+
+
+
+# Plotting the process ----------------------------------------------------
+
+plot(bua.ar2,col="green")
+abline(h=0)
+mtext("AR(2) process")
+
+
+
+# Plotting the correlogram ------------------------------------------------
+
+acf(bua.ar2)
+pacf(bua.ar2)
+
+
+
+# Now, I will estimate an AR(1), AR(2) and an ARMA(1,1) model and check which
+# fits the best
+
+
+
+# Fitting an AR(1) model --------------------------------------------------
+
+model.ar1=arima(bua.ar2,order=c(1,0,0),method="ML")
+
+
+# Fitting an AR(2) model --------------------------------------------------
+
+model.ar2=arima(bua.ar2,order=c(2,0,0),method="ML")
+
+
+# Fitting an ARMA(1,1) model ----------------------------------------------
+
+model.arma11=arima(bua.ar2,order=c(1,0,1),method="ML")
+
+
+
+
+
+# tsdiag test for the 3 series --------------------------------------------
+
+par(mar=c(1, 1, 1, 1))
+par("mar")
+tsdiag(model.ar1)
+tsdiag(model.ar2)
+tsdiag(model.arma11)
+
+
+
+# Finding the eigen values ------------------------------------------------
+
+
+model.ar2
+polyroot(c(-model.ar2$coef[2],-model.ar2$coef[1],1))
+
+# The values are less than unity, i.e. no unit root.
+
+
+# Finding the roots of the characteristic equation ------------------------
+
+
+polyroot(c(1,-model.ar1$coef[1]))
+
+# This is greater than one, i.e. no unit root.
+
+# Testing for serial auto correlation via Ljung-box test for the 3 models -----------------
+
+Box.test(model.ar1$resid,lag=5,type="Ljung-Box")
+
+# Here p-value is less than 0.1. Thus, we can duly reject the null, i.e.
+# no serial auto correlation.
+
+
+Box.test(model.ar2$resid,lag=5,type="Ljung-Box")
+
+# Here p-value is greater than 0.1. Thus, we can not reject the null, i.e.
+# there is serial auto correlation.
+
+
+Box.test(model.arma11$resid,lag=5,type="Ljung-Box")
+
+# Here p-value is less than 0.1. Thus, we can duly reject the null, i.e.
+# no serial auto correlation.
+
+
+
+
+
+
+# Finding the best fitted model by AIC -----------------------------------
+
+
+
+vec.aic=vector()
+vec.aic[1]=AIC(model.ar1)
+vec.aic[2]=AIC(model.ar2)
+vec.aic[3]=AIC(model.arma11)
+vec.aic
+
+
+# Finding the best fitted model by BIC -----------------------------------
+
+
+
+vec.bic=vector()
+vec.bic[1]=BIC(model.ar1)
+vec.bic[2]=BIC(model.ar2)
+vec.bic[3]=BIC(model.arma11)
+vec.bic
+
+
+
+
+# Real life example from St. Louis Fed data using Quantmod library --------
+
+library(quantmod)
+
+
+# Fetching the CPI data from the dataset.
+
+getSymbols("CPIAUCSL",src="FRED")
+head(CPIAUCSL)
+
+
+
+# Getting the time series -------------------------------------------------
+
+cpi.m.ts=ts(CPIAUCSL,start=c(1947,1),frequency=12)
+
+
+
+# Plotting it -------------------------------------------------------------
+
+plot(cpi.m.ts)
+
+
+
+# Creating and plotting the inflation time series --------------------------------------
+
+infl.m=(na.omit(diff(log(cpi.m.ts))))*1200
+plot(infl.m)
+
+
+
+# Doing the same with the CPI and the inflation in an aggregated form --------
+
+
+cpi.q.ts=aggregate(cpi.m.ts,nfrequency=4,mean)
+infl.q.ts=(na.omit(diff(log(cpi.q.ts))))*400   
+
+
+
+# ACF and PACF of inflation -----------------------------------------------
+
+
+acf(infl.q.ts)
+acf(coredata(infl.q.ts))
+
+
+pacf(infl.q.ts)
+pacf(coredata(infl.q.ts))
+
+
+
+# I have prepared the data for inflation. Now, I will do the same for the
+# unemployment.
+
+par (mar=c(3,3,2,1), mgp=c(2,.7,0), tck=-.01)
+
+getSymbols("UNRATE",src="FRED",from="1960-01", to="2018-12")
+
+u <- UNRATE
+
+plot(u)
+
+
+
+# Plotting tthe ACF and PACF ----------------------------------------------
+
+acf(u)
+pacf(u)
+
+
+
+# Creating the time series of unemployment --------------------------------
+
+u.m.ts=ts(u,start=c(1948,1),frequency=12)
+
+
+
+
+# Aggregating the unemployment series -------------------------------------
+
+u.q.ts=aggregate(u.m.ts,nfrequency=4,mean)
+
+
+
+# Plotting the ACF and PACF -----------------------------------------------
+
+acf(coredata(u.m.ts))
+pacf(coredata(u.m.ts))
+
+
+
+# Just by looking at the ACF and PACF, it can't be said which process it is.
+# Thus, we need to difference the series.
+
+du.m=na.omit(diff(u.m.ts))
+du.q=na.omit(diff(u.q.ts))
+
+
+# Plotting the series -----------------------------------------------------
+
+
+plot(du.q)
+
+
+
+# Plotting the ACF and PACF -----------------------------------------------
+
+
+
+
+acf(coredata(du.m))
+pacf(coredata(du.m))
+
+acf(coredata(du.q))
+pacf(coredata(du.q))
+
+
+
+# -------------------------------------------------------------------------------
+
+
