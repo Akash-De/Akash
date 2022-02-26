@@ -1,0 +1,236 @@
+
+#
+#UC Model with non-stationary trend mean
+ rm(list = ls())
+ setwd("C:/Users/kishor/OneDrive - UWM/835/prg_r/R_code_M07")
+
+library(numDeriv)
+library(ucminf)
+library(tis)
+data_im <- read.csv("GDPC1.csv",header = TRUE)
+data <- data_im[,2]
+
+
+y <- 100*log(data)
+
+T <- NROW(y)
+y=matrix(y,nrow=T,ncol=1)
+START <- 2
+
+prior <- 10
+
+trans <-  function(c0){
+  
+  c1 = c0
+  
+  
+  
+  c11 = exp(-c0[3])
+  c22 = exp(-c0[4])
+  c33 = exp(-c0[5])
+  
+  ggg = matrix(0,3,3)
+  ggg[1,1] = c11
+  ggg[2,] = c(0,c22,0)
+  ggg[3,] = c(0,0,c33) 
+  
+  qqq = ggg%*%t(ggg)
+  
+  c1[3] = sqrt(qqq[1,1])
+  c1[4] = sqrt(qqq[2,2])
+  c1[5] = sqrt(qqq[3,3])
+  
+  
+  aaa = c0[1]/(1 + abs(c0[1]))
+  ccc = (1 - abs(aaa))*c0[2]/(1 + abs(c0[2])) + abs(aaa) - aaa^2
+  
+  c1[1] = 2*aaa
+  c1[2] = -1* (aaa^2 + ccc) 
+  
+ 
+  
+  return(c1) 
+}
+lik_fcn <- function(prmtr){
+  
+  prmtr = trans(prmtr)
+  
+  phi_y1 = prmtr[1]
+  phi_y2 = prmtr[2]
+  
+  sig_w = prmtr[3]^2# s.e. of mean of the trend component
+  sig_yy = prmtr[4]^2 # s.e. of cycle
+  sig_vv = prmtr[5]^2 # s.e. of the random walk component
+ 
+  mu=0
+  F = matrix(0,4,4) # Transition matrix
+  F[1,] = c(phi_y1,phi_y2,0,0)
+  F[2,] = c(1,0,0,0)
+  F[3,] = c(0,0,1,1)
+  F[4,] = c(0,0,0,1) 
+  
+  Fstar = F[1:2,1:2] # Transition matrix of I(0) part
+  
+  muvec = matrix(c(0,0,mu,0),4,1) # Drift vector
+  
+  H = matrix(0,1,4)
+  H[1,] = c(1,0,1,0)
+  
+  
+  Q = matrix(0,4,4) # Cov matrix
+  Q[1,] = c(sig_yy,0,0,0)
+  Q[2,] = c(0,0,0,0)
+  Q[3,] = c(0,0,sig_vv,0)
+  Q[4,] = c(0,0,0,sig_w)  
+  Qstar = Q[1:2,1:2] # Cov matrix of I(0) part
+  
+ 
+  
+  beta_ll = matrix(c(0,0,812,0),4,1) # Starting values
+  
+  vecQstar = matrix(Qstar,ncol = 1)
+  vecP_ll = solve(diag(4) - Fstar%x%Fstar)%*%vecQstar
+  
+  # Var matrix of initial state vector
+  P_ll = matrix(0,4,4)
+  P_ll[1,] = c(vecP_ll[1,1],0,0,0)
+ 
+  P_ll[3,] = c(0,0,prior,0)
+  P_ll[4,] = c(0,0,0,prior)
+  
+  lik_mat = matrix(0,T,1)
+  
+  for(j_iter in 1:T){
+    beta_tl = muvec + F%*%beta_ll
+    P_tl = F%*%P_ll%*%t(F) + Q
+    
+    vt = matrix(c(y[j_iter,1:1]),1,1) - H%*%beta_tl  # Prediction error
+    ft = H%*%P_tl%*%t(H) # Variance of forecast error
+    
+    beta_tt = beta_tl + P_tl%*%t(H)%*%solve(ft)%*%vt
+    P_tt = P_tl - P_tl%*%t(H)%*%solve(ft)%*%H%*%P_tl
+    
+    lik_mat[j_iter,1] = 0.5*log(((2*pi)^2)*det(ft)) + 0.5*t(vt)%*%solve(ft)%*%vt
+    
+    beta_ll = beta_tt
+    P_ll = P_tt
+  }
+  
+  val = sum(lik_mat[START:T])
+  
+  return(val)
+}
+filter_fcn <- function(prmtr){
+  
+  prmtr = trans(prmtr)
+  
+  phi_y1 = prmtr[1]
+  phi_y2 = prmtr[2]
+  
+  sig_w = prmtr[3]^2# s.e. of mean of the trend component
+  sig_yy = prmtr[4]^2 # s.e. of cycle
+  sig_vv = prmtr[5]^2 # s.e. of the random walk component
+  
+  mu=0
+  F = matrix(0,4,4) # Transition matrix
+  F[1,] = c(phi_y1,phi_y2,0,0)
+  F[2,] = c(1,0,0,0)
+  F[3,] = c(0,0,1,1)
+  F[4,] = c(0,0,0,1) 
+  
+  Fstar = F[1:2,1:2] # Transition matrix of I(0) part
+  
+  muvec = matrix(c(0,0,mu,0),4,1) # Drift vector
+  
+  H = matrix(0,1,4)
+  H[1,] = c(1,0,1,0)
+  
+  
+  Q = matrix(0,4,4) # Cov matrix
+  Q[1,] = c(sig_yy,0,0,0)
+  Q[2,] = c(0,0,0,0)
+  Q[3,] = c(0,0,sig_vv,0)
+  Q[4,] = c(0,0,0,sig_w)  
+  Qstar = Q[1:2,1:2] # Cov matrix of I(0) part
+  
+  
+  
+  beta_ll = matrix(c(0,0,812,0),4,1) # Starting values
+  
+  vecQstar = matrix(Qstar,ncol = 1)
+  vecP_ll = solve(diag(4) - Fstar%x%Fstar)%*%vecQstar
+  
+  # Var matrix of initial state vector
+  P_ll = matrix(0,4,4)
+  P_ll[1,] = c(vecP_ll[1,1],0,0,0)
+  
+  P_ll[3,] = c(0,0,prior,0)
+  P_ll[4,] = c(0,0,0,prior)
+  
+  beta_mat = matrix(0,T,4)
+  fcst_mat = matrix(0,T,1)
+  
+  for(j_iter in 1:T){
+    beta_tl = muvec + F%*%beta_ll
+    P_tl = F%*%P_ll%*%t(F) + Q
+    
+    vt = matrix(c(y[j_iter,1:1]),1,1) - H%*%beta_tl  # Prediction error
+    ft = H%*%P_tl%*%t(H) # Variance of forecast error
+    
+    beta_tt = beta_tl + P_tl%*%t(H)%*%solve(ft)%*%vt
+    P_tt = P_tl - P_tl%*%t(H)%*%solve(ft)%*%H%*%P_tl
+    
+    beta_ll = beta_tt
+    P_ll = P_tt
+    
+    fcst_mat[j_iter,] = t(vt)
+    beta_mat[j_iter,] = t(beta_tt)
+  }
+  
+  return(list(beta_mat,fcst_mat))
+}
+
+
+
+#=========================================================================#
+# Maximum Likelihood Estimation
+#=========================================================================#
+
+# Initial values for optimisation routine
+prmtr_in = c(1.2,-0.4,0.5,0.4,0.5)
+prmtr_in = t(prmtr_in)
+
+# Initial paramter values
+model = ucminf(prmtr_in,lik_fcn,hessian = TRUE,control = list(maxeval = 3000))
+# Returns paramter estimates, -LL value, code
+
+# Final parameter values
+prm_fnl = t(trans(model$par))
+
+# Use Hessian to find parameter standard errors
+hessn0 = model$hessian
+cov0 = solve(hessn0)
+
+grdn_fnl = jacobian(trans, model$par)
+cov = grdn_fnl%*%cov0%*%t(grdn_fnl)
+sd_fnl = sqrt(abs(diag(cov)))
+sd_out = sqrt(abs(diag(cov0)))
+
+
+filter_out = filter_fcn(model$par)
+data = filter_out[[1]]
+plot(data[,1])
+lines(data[,1])
+
+# gdp plot
+cycle=ts(data[21:T,1],start=c(1965,1),frequency=4)
+
+#throw off first 20 observations at the begining to 
+#take into account the uncertainty associated with
+#intial value of the filtered estimates
+par(mfrow=c(1,1))
+plot(cycle,plot.type='s',col=c("red"),
+     main="cycle ")
+abline(h=0)
+nberShade()
+#nbershare adds the recessionary periods 
