@@ -1,0 +1,317 @@
+##Dynamic Factor Model
+#y1(t)=c(t)+eta1(t)
+#y2(t)=gamma*c(t)+eta2(t)
+#c(t)=beta*c(t-1)+v(t), v(t)~iid(0,sigvv)
+#eta1(t)=phi_y1*eta1(t-1)+phi_y2*eta1(t-2)+e1t, e1t~iid(0,sig_yy)
+#eta2(t)=phi_c1*eta2(t-1)+phi_c2*eta2(t-2)+e2t, e2t~iid(0,sig_cc)
+
+
+ rm(list = ls())
+ setwd("C:/Users/kishor/OneDrive - UWM/835/prg_r/R_code_M07")
+
+library(numDeriv)
+library(ucminf)
+
+ data <-read.csv("gdp_nafta.csv",header=TRUE)
+ #data starts in 1993:Q2
+ y1=(data[,1]-mean(data[,1]))/sd(data[,1])
+ y2=(data[,2]-mean(data[,2]))/sd(data[,2])
+ y3=(data[,3]-mean(data[,3]))/sd(data[,3])
+ 
+ # US GDP GROWTH rate
+ yt_us <- ts(y1,start=c(1993,2),frequency=4)
+ # CANADA GDP GROWTH rate
+ yt_can <- ts(y2,start=c(1993,2),frequency=4)
+ # Mexico GDP GROWTH rate
+ yt_mex <- ts(y3,start=c(1993,2),frequency=4)
+ 
+ # get data 
+ y <- cbind(yt_us,yt_can,yt_mex)
+ T <- length(yt_us)
+
+plot(y)
+
+START <- 2
+
+
+trans <-  function(c0){
+  
+  c1 = c0
+  
+  
+  
+  c11 = exp(-c0[7])
+  c22 = exp(-c0[8])
+  c33 = exp(-c0[9])
+  c44 = exp(-c0[10])
+
+  
+  ggg = matrix(0,4,4)
+  ggg[1,1] = c11
+  ggg[2,2] = c22
+  ggg[3,3] = c33
+  ggg[4,4] = c44
+  
+  qqq = ggg%*%t(ggg)
+  
+  c1[7] = sqrt(qqq[1,1])
+  c1[8] = sqrt(qqq[2,2])
+  c1[9] = sqrt(qqq[3,3])
+  c1[10] = sqrt(qqq[4,4])  
+
+  
+  aaa = c0[1]/(1 + abs(c0[1]))
+  ccc = (1 - abs(aaa))*c0[2]/(1 + abs(c0[2])) + abs(aaa) - aaa^2
+  
+  c1[1] = 2*aaa
+  c1[2] = -1* (aaa^2 + ccc) 
+  
+  aaa = c0[3]/(1 + abs(c0[3]))
+  ccc = (1 - abs(aaa))*c0[4]/(1 + abs(c0[4])) + abs(aaa) - aaa^2
+  
+  c1[3] = 2*aaa
+  c1[4] = -1*(aaa^2 + ccc) 
+  
+  aaa = c0[5]/(1 + abs(c0[5]))
+  ccc = (1 - abs(aaa))*c0[6]/(1 + abs(c0[6])) + abs(aaa) - aaa^2
+  
+  c1[5] = 2*aaa
+  c1[6] = -1*(aaa^2 + ccc)   
+  
+  
+  c1[11]=c0[11]/(1+abs(c0[11]))
+  
+  return(c1) 
+}
+
+lik_fcn <- function(prmtr){
+  
+  prmtr = trans(prmtr)
+  
+  phi_y1 = prmtr[1]
+  phi_y2 = prmtr[2]
+  phi_c1 = prmtr[3]
+  phi_c2 = prmtr[4]
+  phi_m1 = prmtr[5]
+  phi_m2 = prmtr[6] 
+  
+  sig_yy = prmtr[7]^2 # s.e. of US idiosyncratic component
+  sig_cc = prmtr[8]^2 # s.e. of canada idiosyncratic component
+  sig_mm = prmtr[9]^2 # s.e. of mexico idiosyncratic component
+
+  sig_vv = prmtr[10]^2 # s.e. of the common component
+  beta=prmtr[11] #AR parameter for the common component
+ 
+  gamma1 = prmtr[12] #loading of canada common factor
+  gamma2 = prmtr[13] #loading of mexico common factor
+  
+  
+  F = matrix(0,7,7) # Transition matrix
+  F[1,] = c(phi_y1,phi_y2,0,0,0,0,0)
+  F[2,] = c(1,0,0,0,0,0,0)
+  F[3,] = c(0,0,phi_c1,phi_c2,0,0,0)
+  F[4,] = c(0,0,1,0,0,0,0)
+  F[5,] = c(0,0,0,0,phi_m1,phi_m2,0)
+  F[6,] = c(0,0,0,0,1,0,0)  
+  F[7,] = c(0,0,0,0,0,0,beta)
+  
+ 
+  H = matrix(0,3,7)
+  H[1,] = c(1,0,0,0,0,0,1)
+  H[2,] = c(0,0,1,0,0,0,gamma1)
+  H[3,] = c(0,0,0,0,1,0,gamma2)  
+  
+  Q = matrix(0,7,7) # Cov matrix
+  Q[1,] = c(sig_yy,0,0,0,0,0,0)
+  Q[3,] = c(0,0,sig_cc,0,0,0,0)
+  Q[5,] = c(0,0,0,0,sig_mm,0,0)  
+  Q[7,] = c(0,0,0,0,0,0,sig_vv)
+  
+  
+  beta_ll = matrix(c(0,0,0,0,0,0,0),7,1) # Starting values
+  
+  vecQstar = matrix(Q,ncol = 1)
+  vecP_ll = solve(diag(49) - F%x%F)%*%vecQstar
+  
+  # Var matrix of initial state vector
+  P_ll = matrix(0,7,7)
+  P_ll[1,] = c(vecP_ll[1,1],0,0,0,0,0,0)
+  P_ll[3,] = c(0,0,vecP_ll[17,1],0,0,0,0)
+  P_ll[5,] = c(0,0,0,0,vecP_ll[33,1],0,0)
+  P_ll[7,] = c(0,0,0,0,0,0,vecP_ll[49,1]) 
+  
+  lik_mat = matrix(0,T,1)
+  
+  for(j_iter in 1:T){
+    beta_tl =  F%*%beta_ll
+    P_tl = F%*%P_ll%*%t(F) + Q
+    
+    vt = matrix(c(y[j_iter,1:3]),3,1) - H%*%beta_tl  # Prediction error
+    ft = H%*%P_tl%*%t(H) # Variance of forecast error
+    
+    beta_tt = beta_tl + P_tl%*%t(H)%*%solve(ft)%*%vt
+    P_tt = P_tl - P_tl%*%t(H)%*%solve(ft)%*%H%*%P_tl
+    
+    lik_mat[j_iter,1] = 0.5*log(((2*pi)^2)*det(ft)) + 0.5*t(vt)%*%solve(ft)%*%vt
+    
+    beta_ll = beta_tt
+    P_ll = P_tt
+  }
+  
+  val = sum(lik_mat[START:T])
+  
+  return(val)
+}
+
+filter_fcn <- function(prmtr){
+  
+  prmtr = trans(prmtr)
+  
+  phi_y1 = prmtr[1]
+  phi_y2 = prmtr[2]
+  phi_c1 = prmtr[3]
+  phi_c2 = prmtr[4]
+  phi_m1 = prmtr[5]
+  phi_m2 = prmtr[6] 
+  
+  sig_yy = prmtr[7]^2 # s.e. of US idiosyncratic component
+  sig_cc = prmtr[8]^2 # s.e. of canada idiosyncratic component
+  sig_mm = prmtr[9]^2 # s.e. of mexico idiosyncratic component
+  
+  sig_vv = prmtr[10]^2 # s.e. of the common component
+  beta=prmtr[11] #AR parameter for the common component
+  
+  gamma1 = prmtr[12] #loading of canada common factor
+  gamma2 = prmtr[13] #loading of mexico common factor
+  
+  
+  F = matrix(0,7,7) # Transition matrix
+  F[1,] = c(phi_y1,phi_y2,0,0,0,0,0)
+  F[2,] = c(1,0,0,0,0,0,0)
+  F[3,] = c(0,0,phi_c1,phi_c2,0,0,0)
+  F[4,] = c(0,0,1,0,0,0,0)
+  F[5,] = c(0,0,0,0,phi_m1,phi_m2,0)
+  F[6,] = c(0,0,0,0,1,0,0)  
+  F[7,] = c(0,0,0,0,0,0,beta)
+  
+  
+  H = matrix(0,3,7)
+  H[1,] = c(1,0,0,0,0,0,1)
+  H[2,] = c(0,0,1,0,0,0,gamma1)
+  H[3,] = c(0,0,0,0,1,0,gamma2)  
+  Q = matrix(0,7,7) # Cov matrix
+  Q[1,] = c(sig_yy,0,0,0,0,0,0)
+  Q[3,] = c(0,0,sig_cc,0,0,0,0)
+  Q[5,] = c(0,0,0,0,sig_mm,0,0)  
+  Q[7,] = c(0,0,0,0,0,0,sig_vv)
+  
+  
+  beta_ll = matrix(c(0,0,0,0,0,0,0),7,1) # Starting values
+  
+  vecQstar = matrix(Q,ncol = 1)
+  vecP_ll = solve(diag(49) - F%x%F)%*%vecQstar
+  
+  # Var matrix of initial state vector
+  P_ll = matrix(0,7,7)
+  P_ll[1,] = c(vecP_ll[1,1],0,0,0,0,0,0)
+  P_ll[3,] = c(0,0,vecP_ll[17,1],0,0,0,0)
+  P_ll[5,] = c(0,0,0,0,vecP_ll[33,1],0,0)
+  P_ll[7,] = c(0,0,0,0,0,0,vecP_ll[49,1]) 
+  beta_mat = matrix(0,T,7)
+  fcst_mat = matrix(0,T,3)
+  
+  for(j_iter in 1:T){
+    beta_tl =  F%*%beta_ll
+    P_tl = F%*%P_ll%*%t(F) + Q
+    
+    vt = matrix(c(y[j_iter,1:3]),3,1) - H%*%beta_tl  # Prediction error
+    ft = H%*%P_tl%*%t(H) # Variance of forecast error
+    
+    beta_tt = beta_tl + P_tl%*%t(H)%*%solve(ft)%*%vt
+    P_tt = P_tl - P_tl%*%t(H)%*%solve(ft)%*%H%*%P_tl
+    
+    beta_ll = beta_tt
+    P_ll = P_tt
+    
+    fcst_mat[j_iter,] = t(vt)
+    beta_mat[j_iter,] = t(beta_tt)
+  }
+  
+  return(list(beta_mat,fcst_mat))
+}
+
+
+
+#=========================================================================#
+# Maximum Likelihood Estimation
+#=========================================================================#
+
+# Initial values for optimisation routine
+prmtr_in = c(0.2,0.3,0.2,0.7080,0.1,0.4,0.51159,0.31927,0.1,0.1,0.02369,1,1)
+prmtr_in = t(prmtr_in)
+
+# Initial paramter values
+model = ucminf(prmtr_in,lik_fcn,hessian = TRUE,control = list(maxeval = 3000))
+# Returns paramter estimates, -LL value, code
+
+# Final parameter values
+prm_fnl = t(trans(model$par))
+
+# Use Hessian to find parameter standard errors
+hessn0 = model$hessian
+cov0 = solve(hessn0)
+
+grdn_fnl = jacobian(trans, model$par)
+cov = grdn_fnl%*%cov0%*%t(grdn_fnl)
+sd_fnl = sqrt(abs(diag(cov)))
+sd_out = sqrt(abs(diag(cov0)))
+
+
+
+#=========================================================================#
+# Filtered coefficients
+#=========================================================================#
+
+filter_out = filter_fcn(model$par)
+state_est = filter_out[[1]]
+forcst = filter_out[[2]]
+state_est
+
+common_component=ts(state_est[,7],start=c(1993,2),frequency=4)
+##plotting
+par(mfrow=c(2,1))
+par(mai=c(0.5,0.4,0.4,0.2))
+plot(common_component,plot.type='s',col=c("blue"),
+     main="common component")
+abline(h=0)
+par(mai=c(0.5,0.4,0.4,0.2))
+plot(common_component,plot.type='s',col=c("blue"),
+     main="common component with actual GDP growth rates")
+abline(h=0)
+lines(yt_us,col=c("red"))
+lines(yt_can,col=c("green"))
+lines(yt_mex,col=c("black"))
+
+
+
+##variance decomposition
+var_comm=prm_fnl[10]^2/(1-prm_fnl[11]^2)#variance of common component
+#calculation of the variance of idiosyncratic component (note ar(2)formula)
+var_idio_us=(1-prm_fnl[2]/(1+prm_fnl[2]))*(prm_fnl[7]^2/(1-prm_fnl[2])^2-prm_fnl[1]^2)
+var_idio_can=(1-prm_fnl[4]/(1+prm_fnl[4]))*(prm_fnl[8]^2/(1-prm_fnl[4])^2-prm_fnl[3]^2)
+var_idio_mex=(1-prm_fnl[6]/(1+prm_fnl[6]))*(prm_fnl[9]^2/(1-prm_fnl[6])^2-prm_fnl[5]^2)
+
+
+###TOTAL VARIANCE FOR EACH COUNTRY
+total_var_us=var_comm+var_idio_us
+total_var_can=(prm_fnl[12]^2*var_comm)+var_idio_can #note the loading on common factor
+total_var_mex=(prm_fnl[13]^2*var_comm)+var_idio_mex 
+
+##contribution of common factor
+
+commshare_us=var_comm/total_var_us
+commshare_can=(prm_fnl[12]^2*var_comm)/total_var_can
+commshare_mex=(prm_fnl[13]^2*var_comm)/total_var_mex
+
+
+
