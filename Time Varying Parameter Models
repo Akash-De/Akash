@@ -1,0 +1,215 @@
+rm(list = ls())
+setwd("~/Desktop/Econ-835/R Codes/TVP")
+
+library(numDeriv)
+library(ucminf)
+
+data_im <- read.table("yc.txt")
+data <- cbind(log(data_im[10:214,1])-log(data_im[9:213,1]),
+              log(data_im[10:214,3])-log(data_im[9:213,3]))
+
+T <- length(data[,1])
+y <-log(data_im[10:214,1])-log(data_im[9:213,1])
+y=matrix(y,T,1)*100
+
+x=cbind(matrix(1,length(y),1),data[,2]*100)
+
+
+
+START <- 2
+
+prior <- 100
+
+trans <-  function(c0){
+  
+  c1 = c0
+  
+  
+  
+  c11 = exp(-c0[2])
+  c22 = exp(-c0[3])
+  c33 = exp(-c0[1])
+  
+  ggg = matrix(0,3,3)
+  ggg[1,1] = c11
+  ggg[2,2] = c22
+  ggg[3,3]= c33
+  
+  qqq = ggg%*%t(ggg)
+  
+  c1[2] = sqrt(qqq[1,1])
+  c1[3] = sqrt(qqq[2,2])
+  c[1]=sqrt(qqq[3,3])
+  
+  
+  
+  return(c1)
+}
+
+
+# Running the loop for Likelihood
+lik_fcn <- function(prmtr){
+  
+  prmtr = trans(prmtr)
+  
+  
+  mu = 0
+  sig_r=prmtr[1]^2 #SE OF THE MEASUREMENT EQUATION
+  sig_yy = prmtr[2]^2 # s.e. of first TVP
+  sig_vv = prmtr[3]^2 # s.e. of second TVP
+  
+  
+  F = matrix(0,2,2) # Transition matrix
+  F[1,] = c(1,0)
+  F[2,] = c(0,1)
+  
+  
+  muvec = matrix(c(0,0),2,1) # Drift vector
+  
+  A=mu;
+  
+  Q = matrix(0,2,2) # Cov matrix of the transition equation
+  Q[1,] = c(sig_yy,0)
+  Q[2,] = c(0,sig_vv)
+  
+  beta_ll = matrix(c(0,0),2,1) # Starting values
+  
+  vecQstar = matrix(Q,ncol = 1)
+  vecQstar = matrix(Q,ncol = 1)
+  
+  
+  # Var matrix of initial state vector
+  P_ll = matrix(0,2,2)
+  P_ll[1,] = c(10,0)
+  P_ll[2,] = c(0,10)
+  
+  lik_mat = matrix(0,T,1) # Creating the empty matrix
+  
+  
+  # Running the loop for updating
+  for(j_iter in 1:T){
+    H_1=matrix(c(x[j_iter,1:2]),2,1)
+    H=t(H_1)
+    beta_tl = muvec + F%*%beta_ll # The transition equation
+    P_tl = F%*%P_ll%*%t(F) + Q # Error variance of the transition equation
+    
+    vt = y[j_iter,1:1] - H%*%beta_tl - A # Prediction error
+    ft = H%*%P_tl%*%t(H)+sig_r # Variance of forecast error
+    
+    beta_tt = beta_tl + P_tl%*%t(H)%*%solve(ft)%*%vt # Updating equation
+    P_tt = P_tl - P_tl%*%t(H)%*%solve(ft)%*%H%*%P_tl # Updating equation
+    
+    lik_mat[j_iter,1] = 0.5*log(((2*pi)^2)*det(ft)) + 0.5*t(vt)%*%solve(ft)%*%vt
+    
+    beta_ll = beta_tt
+    P_ll = P_tt
+  }
+  
+  val = sum(lik_mat[START:T])
+  
+  return(val)
+}
+
+filter_fcn <- function(prmtr){
+  
+  prmtr = trans(prmtr)
+  
+  mu =0
+  sig_r = prmtr[1]^2  
+  sig_yy = prmtr[2]^2 # s.e. of TVP
+  sig_vv = prmtr[3]^2 # s.e. of the common component
+  
+  
+  F = matrix(0,2,2) # Transition matrix
+  F[1,] = c(1,0)
+  F[2,] = c(0,1)
+  
+  
+  muvec = matrix(c(0,0),2,1) # Drift vector
+  
+  A=mu;
+  Q = matrix(0,2,2) # Cov matrix
+  Q[1,] = c(sig_yy,0)
+  Q[2,] = c(0,sig_vv)
+  
+  beta_ll = matrix(c(0,0),2,1) # Starting values
+  
+  vecQstar = matrix(Q,ncol = 1)
+  
+  
+  # Var matrix of initial state vector
+  P_ll = matrix(0,2,2)
+  P_ll[1,] = c(10,0)
+  P_ll[2,] = c(0,10)
+  
+  beta_mat = matrix(0,T,2) # Creating empty matrix for beta's
+  fcst_mat = matrix(0,T,2) # Creating empty matrix for y's
+  
+  for(j_iter in 1:T){
+    
+    H_1=matrix(c(x[j_iter,1:2]),2,1)
+    H=t(H_1)
+    
+    beta_tl = muvec + F%*%beta_ll
+    P_tl = F%*%P_ll%*%t(F) + Q
+    
+    vt = y[j_iter,] - H%*%beta_tl - A # Prediction error
+    ft = H%*%P_tl%*%t(H)+sig_r # Variance of forecast error
+    
+    beta_tt = beta_tl + P_tl%*%t(H)%*%solve(ft)%*%vt
+    P_tt = P_tl - P_tl%*%t(H)%*%solve(ft)%*%H%*%P_tl
+    
+    beta_ll = beta_tt
+    P_ll = P_tt
+    
+    fcst_mat[j_iter,] = t(vt)
+    beta_mat[j_iter,] = t(beta_tt)
+  }
+  
+  return(list(beta_mat,fcst_mat))
+}
+
+
+
+#=========================================================================#
+# Maximum Likelihood Estimation
+#=========================================================================#
+
+# Initial values for optimisation routine
+prmtr_in = c(0.8, 14.5,15.2)
+prmtr_in = t(prmtr_in)
+
+# Initial paramter values
+model = ucminf(prmtr_in,lik_fcn,hessian = TRUE,control = list(maxeval = 3000))
+# Returns paramter estimates, -LL value, code
+
+# Final parameter values
+prm_fnl = t(trans(model$par))
+
+# Use Hessian to find parameter standard errors
+hessn0 = model$hessian
+cov0 = solve(hessn0)
+
+grdn_fnl = jacobian(trans, model$par)
+cov = grdn_fnl%*%cov0%*%t(grdn_fnl)
+sd_fnl = sqrt(abs(diag(cov)))
+sd_out = sqrt(abs(diag(cov0)))
+
+?ucminf
+
+#=========================================================================#
+# Filtered coefficients
+#=========================================================================#
+
+filter_out = filter_fcn(model$par)
+data = filter_out[[1]]
+forcst = filter_out[[2]]
+dev.off()
+# filtered states
+alphat=ts(data[,1],start=c(1960,1),frequency=4)
+betat=ts(data[,2],start=c(1960,1),frequency=4)
+
+plot(alphat,plot.type='s',col=c("blue"),
+     main="TVP- Intercept (filtered estimate)")
+plot(betat,plot.type='s',col=c("blue"),
+     main="TVP- Intercept (filtered estimate)")
