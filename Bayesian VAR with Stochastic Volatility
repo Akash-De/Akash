@@ -1,0 +1,735 @@
+
+
+
+###########################################################################
+#                                                                         #
+#                          Setting Configuration                          #
+#                                                                         #
+###########################################################################
+
+
+
+# Clearing the Environment History ----------------------------------------
+rm(list = ls())
+
+
+
+# Loading Working Directory -----------------------------------------------
+setwd("~/Desktop/Second Chapter/Version-03:30:2021")
+
+
+# Loading Library ---------------------------------------------------------
+library(dplyr)
+library(zoo)
+library(tidyverse)
+library(xts)
+library(janitor)
+library(reshape2)
+library(forecast)
+library(gmm)
+library(lmtest)
+library(maxLik)
+library(AER)
+library(fpp)
+library(strucchange)
+library(urca)
+require(pracma)
+library(mFilter)
+library(dlm)
+library(tis)
+library(quantmod)
+library(numDeriv)
+library(ucminf)
+library(tis)
+library(ggplot2)
+library(patchwork)
+library(hrbrthemes)
+library(bvarsv)
+library(factorstochvol)
+library(nowcasting)
+library(readxl)
+library(vars)
+
+
+
+
+###########################################################################
+#                                                                         #
+#                           Data Preparation                              #
+#                                                                         #
+###########################################################################
+
+
+
+# Loading Data ------------------------------------------------------------
+
+df <- read.csv("~/Desktop/Third Chapter/R Codes for BVARSV/Data_long.csv")
+df <- as.data.frame(df)
+
+names <- unique(df$State)
+data_TR <- paste("dTR", names, sep = "_")
+data_NTR <- paste("dNTR", names, sep = "_")
+
+
+
+for (i in names) {
+  nam <- paste("df", i, sep = "_")
+  df_i <- df[,2:9] %>% filter(State == i)
+  assign(nam, df_i)
+}
+
+
+
+
+
+dTR_Alabama <- diff(df_Alabama[,3])
+dTR_Alaska  <- diff(df_Alaska[,3])
+dTR_Arizona  <- diff(df_Arizona[,3])
+dTR_Arkansas  <- diff(df_Arkansas[,3])
+dTR_California  <- diff(df_California[,3])
+dTR_Colorado  <- diff(df_Colorado[,3])
+dTR_Connecticut  <- diff(df_Connecticut[,3])
+dTR_Florida  <- diff(df_Florida[,3])
+dTR_Georgia  <- diff(df_Georgia[,3])
+dTR_Idaho  <- diff(df_Idaho[,3])
+dTR_Illinois  <- diff(df_Illinois[,3])
+dTR_Indiana  <- diff(df_Indiana[,3])
+dTR_Kansas  <- diff(df_Kansas[,3])
+dTR_Kentucky  <- diff(df_Kentucky[,3])
+dTR_Louisiana  <- diff(df_Louisiana[,3])
+dTR_lowa  <- diff(df_lowa[,3])
+dTR_Maryland  <- diff(df_Maryland[,3])
+dTR_Massachusetts  <- diff(df_Massachusetts[,3])
+dTR_Michigan  <- diff(df_Michigan[,3])
+dTR_Minnesota  <- diff(df_Minnesota[,3])
+dTR_Mississippi  <- diff(df_Mississippi[,3])
+dTR_Missouri  <- diff(df_Missouri[,3])
+dTR_Montana  <- diff(df_Montana[,3])
+dTR_Nebraska  <- diff(df_Nebraska[,3])
+dTR_Nevada  <- diff(df_Nevada[,3])
+dTR_NewHampshire  <- diff(df_NewHampshire[,3])
+dTR_NewJersey  <- diff(df_NewJersey[,3])
+dTR_NewMexico  <- diff(df_NewMexico[,3])
+dTR_NewYork  <- diff(df_NewYork[,3])
+dTR_NorthCarolina  <- diff(df_NorthCarolina[,3])
+dTR_NorthDakota  <- diff(df_NorthDakota[,3])
+dTR_Ohio  <- diff(df_Ohio[,3])
+dTR_Oklahoma  <- diff(df_Oklahoma[,3])
+dTR_Oregon  <- diff(df_Oregon[,3])
+dTR_Pennsylvania  <- diff(df_Pennsylvania[,3])
+dTR_SouthCarolina  <- diff(df_SouthCarolina[,3])
+dTR_SouthDakota  <- diff(df_SouthDakota[,3])
+dTR_Tennessee  <- diff(df_Tennessee[,3])
+dTR_Texas  <- diff(df_Texas[,3])
+dTR_Utah  <- diff(df_Utah[,3])
+dTR_Vermont  <- diff(df_Vermont[,3])
+dTR_Virginia  <- diff(df_Virginia[,3])
+dTR_Washington  <- diff(df_Washington[,3])
+dTR_WestVirginia  <- diff(df_WestVirginia[,3])
+dTR_Wisconsin  <- diff(df_Wisconsin[,3])
+
+
+dNTR_Alabama <- diff(df_Alabama[,4])
+dNTR_Alaska  <- diff(df_Alaska[,4])
+dNTR_Arizona  <- diff(df_Arizona[,4])
+dNTR_Arkansas  <- diff(df_Arkansas[,4])
+dNTR_California  <- diff(df_California[,4])
+dNTR_Colorado  <- diff(df_Colorado[,4])
+dNTR_Connecticut  <- diff(df_Connecticut[,4])
+dNTR_Florida  <- diff(df_Florida[,4])
+dNTR_Georgia  <- diff(df_Georgia[,4])
+dNTR_Idaho  <- diff(df_Idaho[,4])
+dNTR_Illinois  <- diff(df_Illinois[,4])
+dNTR_Indiana  <- diff(df_Indiana[,4])
+dNTR_Kansas  <- diff(df_Kansas[,4])
+dNTR_Kentucky  <- diff(df_Kentucky[,4])
+dNTR_Louisiana  <- diff(df_Louisiana[,4])
+dNTR_lowa  <- diff(df_lowa[,4])
+dNTR_Maryland  <- diff(df_Maryland[,4])
+dNTR_Massachusetts  <- diff(df_Massachusetts[,4])
+dNTR_Michigan  <- diff(df_Michigan[,4])
+dNTR_Minnesota  <- diff(df_Minnesota[,4])
+dNTR_Mississippi  <- diff(df_Mississippi[,4])
+dNTR_Missouri  <- diff(df_Missouri[,4])
+dNTR_Montana  <- diff(df_Montana[,4])
+dNTR_Nebraska  <- diff(df_Nebraska[,4])
+dNTR_Nevada  <- diff(df_Nevada[,4])
+dNTR_NewHampshire  <- diff(df_NewHampshire[,4])
+dNTR_NewJersey  <- diff(df_NewJersey[,4])
+dNTR_NewMexico  <- diff(df_NewMexico[,4])
+dNTR_NewYork  <- diff(df_NewYork[,4])
+dNTR_NorthCarolina  <- diff(df_NorthCarolina[,4])
+dNTR_NorthDakota  <- diff(df_NorthDakota[,4])
+dNTR_Ohio  <- diff(df_Ohio[,4])
+dNTR_Oklahoma  <- diff(df_Oklahoma[,4])
+dNTR_Oregon  <- diff(df_Oregon[,4])
+dNTR_Pennsylvania  <- diff(df_Pennsylvania[,4])
+dNTR_SouthCarolina  <- diff(df_SouthCarolina[,4])
+dNTR_SouthDakota  <- diff(df_SouthDakota[,4])
+dNTR_Tennessee  <- diff(df_Tennessee[,4])
+dNTR_Texas  <- diff(df_Texas[,4])
+dNTR_Utah  <- diff(df_Utah[,4])
+dNTR_Vermont  <- diff(df_Vermont[,4])
+dNTR_Virginia  <- diff(df_Virginia[,4])
+dNTR_Washington  <- diff(df_Washington[,4])
+dNTR_WestVirginia  <- diff(df_WestVirginia[,4])
+dNTR_Wisconsin  <- diff(df_Wisconsin[,4])
+
+
+dHP_Alabama <- diff(df_Alabama[,5])
+dHP_Alaska  <- diff(df_Alaska[,5])
+dHP_Arizona  <- diff(df_Arizona[,5])
+dHP_Arkansas  <- diff(df_Arkansas[,5])
+dHP_California  <- diff(df_California[,5])
+dHP_Colorado  <- diff(df_Colorado[,5])
+dHP_Connecticut  <- diff(df_Connecticut[,5])
+dHP_Florida  <- diff(df_Florida[,5])
+dHP_Georgia  <- diff(df_Georgia[,5])
+dHP_Idaho  <- diff(df_Idaho[,5])
+dHP_Illinois  <- diff(df_Illinois[,5])
+dHP_Indiana  <- diff(df_Indiana[,5])
+dHP_Kansas  <- diff(df_Kansas[,5])
+dHP_Kentucky  <- diff(df_Kentucky[,5])
+dHP_Louisiana  <- diff(df_Louisiana[,5])
+dHP_lowa  <- diff(df_lowa[,5])
+dHP_Maryland  <- diff(df_Maryland[,5])
+dHP_Massachusetts  <- diff(df_Massachusetts[,5])
+dHP_Michigan  <- diff(df_Michigan[,5])
+dHP_Minnesota  <- diff(df_Minnesota[,5])
+dHP_Mississippi  <- diff(df_Mississippi[,5])
+dHP_Missouri  <- diff(df_Missouri[,5])
+dHP_Montana  <- diff(df_Montana[,5])
+dHP_Nebraska  <- diff(df_Nebraska[,5])
+dHP_Nevada  <- diff(df_Nevada[,5])
+dHP_NewHampshire  <- diff(df_NewHampshire[,5])
+dHP_NewJersey  <- diff(df_NewJersey[,5])
+dHP_NewMexico  <- diff(df_NewMexico[,5])
+dHP_NewYork  <- diff(df_NewYork[,5])
+dHP_NorthCarolina  <- diff(df_NorthCarolina[,5])
+dHP_NorthDakota  <- diff(df_NorthDakota[,5])
+dHP_Ohio  <- diff(df_Ohio[,5])
+dHP_Oklahoma  <- diff(df_Oklahoma[,5])
+dHP_Oregon  <- diff(df_Oregon[,5])
+dHP_Pennsylvania  <- diff(df_Pennsylvania[,5])
+dHP_SouthCarolina  <- diff(df_SouthCarolina[,5])
+dHP_SouthDakota  <- diff(df_SouthDakota[,5])
+dHP_Tennessee  <- diff(df_Tennessee[,5])
+dHP_Texas  <- diff(df_Texas[,5])
+dHP_Utah  <- diff(df_Utah[,5])
+dHP_Vermont  <- diff(df_Vermont[,5])
+dHP_Virginia  <- diff(df_Virginia[,5])
+dHP_Washington  <- diff(df_Washington[,5])
+dHP_WestVirginia  <- diff(df_WestVirginia[,5])
+dHP_Wisconsin  <- diff(df_Wisconsin[,5])
+
+
+
+
+
+###########################################################################
+#                                                                         #
+#                          BVARSV Estimation                              #
+#                                                                         #
+###########################################################################
+
+# Fix number of Gibbs sampler draws used in this vignette -----------------
+
+nburn <- 10
+nrep <- 100
+
+# nburn <- 1000
+# nrep <- 5000
+
+
+
+# Setting Up the BVAR -----------------------------------------------------
+vardf.TR_Alabama <- ts(cbind(dTR_Alabama,dHP_Alabama),start = c(2001,1),frequency = 12)
+vardf.TR_Alaska <- ts(cbind(dTR_Alaska,dHP_Alaska),start = c(2001,1),frequency = 12)
+vardf.TR_Arizona <- ts(cbind(dTR_Arizona,dHP_Arizona),start = c(2001,1),frequency = 12)
+vardf.TR_Arkansas <- ts(cbind(dTR_Arkansas,dHP_Arkansas),start = c(2001,1),frequency = 12)
+vardf.TR_California <- ts(cbind(dTR_California,dHP_California),start = c(2001,1),frequency = 12)
+vardf.TR_Colorado <- ts(cbind(dTR_Colorado,dHP_Colorado),start = c(2001,1),frequency = 12)
+vardf.TR_Connecticut <- ts(cbind(dTR_Connecticut,dHP_Connecticut),start = c(2001,1),frequency = 12)
+vardf.TR_Florida <- ts(cbind(dTR_Florida,dHP_Florida),start = c(2001,1),frequency = 12)
+vardf.TR_Georgia <- ts(cbind(dTR_Georgia,dHP_Georgia),start = c(2001,1),frequency = 12)
+vardf.TR_Idaho <- ts(cbind(dTR_Idaho,dHP_Idaho),start = c(2001,1),frequency = 12)
+vardf.TR_Illinois <- ts(cbind(dTR_Illinois,dHP_Illinois),start = c(2001,1),frequency = 12)
+vardf.TR_Indiana <- ts(cbind(dTR_Indiana,dHP_Indiana),start = c(2001,1),frequency = 12)
+vardf.TR_Kansas <- ts(cbind(dTR_Kansas,dHP_Kansas),start = c(2001,1),frequency = 12)
+vardf.TR_Kentucky <- ts(cbind(dTR_Kentucky,dHP_Kentucky),start = c(2001,1),frequency = 12)
+vardf.TR_Louisiana <- ts(cbind(dTR_Louisiana,dHP_Louisiana),start = c(2001,1),frequency = 12)
+vardf.TR_lowa <- ts(cbind(dTR_lowa,dHP_lowa),start = c(2001,1),frequency = 12)
+vardf.TR_Maryland <- ts(cbind(dTR_Maryland,dHP_Maryland),start = c(2001,1),frequency = 12)
+vardf.TR_Massachusetts <- ts(cbind(dTR_Massachusetts,dHP_Massachusetts),start = c(2001,1),frequency = 12)
+vardf.TR_Michigan <- ts(cbind(dTR_Michigan,dHP_Michigan),start = c(2001,1),frequency = 12)
+vardf.TR_Minnesota <- ts(cbind(dTR_Minnesota,dHP_Minnesota),start = c(2001,1),frequency = 12)
+vardf.TR_Mississippi <- ts(cbind(dTR_Mississippi,dHP_Mississippi),start = c(2001,1),frequency = 12)
+vardf.TR_Missouri <- ts(cbind(dTR_Missouri,dHP_Missouri),start = c(2001,1),frequency = 12)
+vardf.TR_Montana <- ts(cbind(dTR_Montana,dHP_Montana),start = c(2001,1),frequency = 12)
+vardf.TR_Nebraska <- ts(cbind(dTR_Nebraska,dHP_Nebraska),start = c(2001,1),frequency = 12)
+vardf.TR_Nevada <- ts(cbind(dTR_Nevada,dHP_Nevada),start = c(2001,1),frequency = 12)
+vardf.TR_NewHampshire <- ts(cbind(dTR_NewHampshire,dHP_NewHampshire),start = c(2001,1),frequency = 12)
+vardf.TR_NewJersey <- ts(cbind(dTR_NewJersey,dHP_NewJersey),start = c(2001,1),frequency = 12)
+vardf.TR_NewMexico <- ts(cbind(dTR_NewMexico,dHP_NewMexico),start = c(2001,1),frequency = 12)
+vardf.TR_NewYork <- ts(cbind(dTR_NewYork,dHP_NewYork),start = c(2001,1),frequency = 12)
+vardf.TR_NorthCarolina <- ts(cbind(dTR_NorthCarolina,dHP_NorthCarolina),start = c(2001,1),frequency = 12)
+vardf.TR_NorthDakota <- ts(cbind(dTR_NorthDakota,dHP_NorthDakota),start = c(2001,1),frequency = 12)
+vardf.TR_Ohio <- ts(cbind(dTR_Ohio,dHP_Ohio),start = c(2001,1),frequency = 12)
+vardf.TR_Oklahoma <- ts(cbind(dTR_Oklahoma,dHP_Oklahoma),start = c(2001,1),frequency = 12)
+vardf.TR_Oregon <- ts(cbind(dTR_Oregon,dHP_Oregon),start = c(2001,1),frequency = 12)
+vardf.TR_Pennsylvania <- ts(cbind(dTR_Pennsylvania,dHP_Pennsylvania),start = c(2001,1),frequency = 12)
+vardf.TR_SouthCarolina <- ts(cbind(dTR_SouthCarolina,dHP_SouthCarolina),start = c(2001,1),frequency = 12)
+vardf.TR_SouthDakota <- ts(cbind(dTR_SouthDakota,dHP_SouthDakota),start = c(2001,1),frequency = 12)
+vardf.TR_Tennessee <- ts(cbind(dTR_Tennessee,dHP_Tennessee),start = c(2001,1),frequency = 12)
+vardf.TR_Texas <- ts(cbind(dTR_Texas,dHP_Texas),start = c(2001,1),frequency = 12)
+vardf.TR_Utah <- ts(cbind(dTR_Utah,dHP_Utah),start = c(2001,1),frequency = 12)
+vardf.TR_Vermont <- ts(cbind(dTR_Vermont,dHP_Vermont),start = c(2001,1),frequency = 12)
+vardf.TR_Virginia <- ts(cbind(dTR_Virginia,dHP_Virginia),start = c(2001,1),frequency = 12)
+vardf.TR_Washington <- ts(cbind(dTR_Washington,dHP_Washington),start = c(2001,1),frequency = 12)
+vardf.TR_WestVirginia <- ts(cbind(dTR_WestVirginia,dHP_WestVirginia),start = c(2001,1),frequency = 12)
+vardf.TR_Wisconsin <- ts(cbind(dTR_Wisconsin,dHP_Wisconsin),start = c(2001,1),frequency = 12)
+
+
+
+vardf.NTR_Alabama <- ts(cbind(dNTR_Alabama,dHP_Alabama),start = c(2001,1),frequency = 12)
+vardf.NTR_Alaska <- ts(cbind(dNTR_Alaska,dHP_Alaska),start = c(2001,1),frequency = 12)
+vardf.NTR_Arizona <- ts(cbind(dNTR_Arizona,dHP_Arizona),start = c(2001,1),frequency = 12)
+vardf.NTR_Arkansas <- ts(cbind(dNTR_Arkansas,dHP_Arkansas),start = c(2001,1),frequency = 12)
+vardf.NTR_California <- ts(cbind(dNTR_California,dHP_California),start = c(2001,1),frequency = 12)
+vardf.NTR_Colorado <- ts(cbind(dNTR_Colorado,dHP_Colorado),start = c(2001,1),frequency = 12)
+vardf.NTR_Connecticut <- ts(cbind(dNTR_Connecticut,dHP_Connecticut),start = c(2001,1),frequency = 12)
+vardf.NTR_Florida <- ts(cbind(dNTR_Florida,dHP_Florida),start = c(2001,1),frequency = 12)
+vardf.NTR_Georgia <- ts(cbind(dNTR_Georgia,dHP_Georgia),start = c(2001,1),frequency = 12)
+vardf.NTR_Idaho <- ts(cbind(dNTR_Idaho,dHP_Idaho),start = c(2001,1),frequency = 12)
+vardf.NTR_Illinois <- ts(cbind(dNTR_Illinois,dHP_Illinois),start = c(2001,1),frequency = 12)
+vardf.NTR_Indiana <- ts(cbind(dNTR_Indiana,dHP_Indiana),start = c(2001,1),frequency = 12)
+vardf.NTR_Kansas <- ts(cbind(dNTR_Kansas,dHP_Kansas),start = c(2001,1),frequency = 12)
+vardf.NTR_Kentucky <- ts(cbind(dNTR_Kentucky,dHP_Kentucky),start = c(2001,1),frequency = 12)
+vardf.NTR_Louisiana <- ts(cbind(dNTR_Louisiana,dHP_Louisiana),start = c(2001,1),frequency = 12)
+vardf.NTR_lowa <- ts(cbind(dNTR_lowa,dHP_lowa),start = c(2001,1),frequency = 12)
+vardf.NTR_Maryland <- ts(cbind(dNTR_Maryland,dHP_Maryland),start = c(2001,1),frequency = 12)
+vardf.NTR_Massachusetts <- ts(cbind(dNTR_Massachusetts,dHP_Massachusetts),start = c(2001,1),frequency = 12)
+vardf.NTR_Michigan <- ts(cbind(dNTR_Michigan,dHP_Michigan),start = c(2001,1),frequency = 12)
+vardf.NTR_Minnesota <- ts(cbind(dNTR_Minnesota,dHP_Minnesota),start = c(2001,1),frequency = 12)
+vardf.NTR_Mississippi <- ts(cbind(dNTR_Mississippi,dHP_Mississippi),start = c(2001,1),frequency = 12)
+vardf.NTR_Missouri <- ts(cbind(dNTR_Missouri,dHP_Missouri),start = c(2001,1),frequency = 12)
+vardf.NTR_Montana <- ts(cbind(dNTR_Montana,dHP_Montana),start = c(2001,1),frequency = 12)
+vardf.NTR_Nebraska <- ts(cbind(dNTR_Nebraska,dHP_Nebraska),start = c(2001,1),frequency = 12)
+vardf.NTR_Nevada <- ts(cbind(dNTR_Nevada,dHP_Nevada),start = c(2001,1),frequency = 12)
+vardf.NTR_NewHampshire <- ts(cbind(dNTR_NewHampshire,dHP_NewHampshire),start = c(2001,1),frequency = 12)
+vardf.NTR_NewJersey <- ts(cbind(dNTR_NewJersey,dHP_NewJersey),start = c(2001,1),frequency = 12)
+vardf.NTR_NewMexico <- ts(cbind(dNTR_NewMexico,dHP_NewMexico),start = c(2001,1),frequency = 12)
+vardf.NTR_NewYork <- ts(cbind(dNTR_NewYork,dHP_NewYork),start = c(2001,1),frequency = 12)
+vardf.NTR_NorthCarolina <- ts(cbind(dNTR_NorthCarolina,dHP_NorthCarolina),start = c(2001,1),frequency = 12)
+vardf.NTR_NorthDakota <- ts(cbind(dNTR_NorthDakota,dHP_NorthDakota),start = c(2001,1),frequency = 12)
+vardf.NTR_Ohio <- ts(cbind(dNTR_Ohio,dHP_Ohio),start = c(2001,1),frequency = 12)
+vardf.NTR_Oklahoma <- ts(cbind(dNTR_Oklahoma,dHP_Oklahoma),start = c(2001,1),frequency = 12)
+vardf.NTR_Oregon <- ts(cbind(dNTR_Oregon,dHP_Oregon),start = c(2001,1),frequency = 12)
+vardf.NTR_Pennsylvania <- ts(cbind(dNTR_Pennsylvania,dHP_Pennsylvania),start = c(2001,1),frequency = 12)
+vardf.NTR_SouthCarolina <- ts(cbind(dNTR_SouthCarolina,dHP_SouthCarolina),start = c(2001,1),frequency = 12)
+vardf.NTR_SouthDakota <- ts(cbind(dNTR_SouthDakota,dHP_SouthDakota),start = c(2001,1),frequency = 12)
+vardf.NTR_Tennessee <- ts(cbind(dNTR_Tennessee,dHP_Tennessee),start = c(2001,1),frequency = 12)
+vardf.NTR_Texas <- ts(cbind(dNTR_Texas,dHP_Texas),start = c(2001,1),frequency = 12)
+vardf.NTR_Utah <- ts(cbind(dNTR_Utah,dHP_Utah),start = c(2001,1),frequency = 12)
+vardf.NTR_Vermont <- ts(cbind(dNTR_Vermont,dHP_Vermont),start = c(2001,1),frequency = 12)
+vardf.NTR_Virginia <- ts(cbind(dNTR_Virginia,dHP_Virginia),start = c(2001,1),frequency = 12)
+vardf.NTR_Washington <- ts(cbind(dNTR_Washington,dHP_Washington),start = c(2001,1),frequency = 12)
+vardf.NTR_WestVirginia <- ts(cbind(dNTR_WestVirginia,dHP_WestVirginia),start = c(2001,1),frequency = 12)
+vardf.NTR_Wisconsin <- ts(cbind(dNTR_Wisconsin,dHP_Wisconsin),start = c(2001,1),frequency = 12)
+
+
+
+
+
+
+# Running the Estimation --------------------------------------------------
+fit.TR_Alabama <- bvar.sv.tvp(vardf.TR_Alabama, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Alaska <- bvar.sv.tvp(vardf.TR_Alaska, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Arizona <- bvar.sv.tvp(vardf.TR_Arizona, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Arkansas <- bvar.sv.tvp(vardf.TR_Arkansas, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_California <- bvar.sv.tvp(vardf.TR_California, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Colorado <- bvar.sv.tvp(vardf.TR_Colorado, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Connecticut <- bvar.sv.tvp(vardf.TR_Connecticut, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Florida <- bvar.sv.tvp(vardf.TR_Florida, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Georgia <- bvar.sv.tvp(vardf.TR_Georgia, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Idaho <- bvar.sv.tvp(vardf.TR_Idaho, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Illinois <- bvar.sv.tvp(vardf.TR_Illinois, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Indiana <- bvar.sv.tvp(vardf.TR_Indiana, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Kansas <- bvar.sv.tvp(vardf.TR_Kansas, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Kentucky <- bvar.sv.tvp(vardf.TR_Kentucky, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Louisiana <- bvar.sv.tvp(vardf.TR_Louisiana, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_lowa <- bvar.sv.tvp(vardf.TR_lowa, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Maryland <- bvar.sv.tvp(vardf.TR_Maryland, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Massachusetts <- bvar.sv.tvp(vardf.TR_Massachusetts, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Michigan <- bvar.sv.tvp(vardf.TR_Michigan, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Minnesota <- bvar.sv.tvp(vardf.TR_Minnesota, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Mississippi <- bvar.sv.tvp(vardf.TR_Mississippi, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Missouri <- bvar.sv.tvp(vardf.TR_Missouri, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Montana <- bvar.sv.tvp(vardf.TR_Montana, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Nebraska <- bvar.sv.tvp(vardf.TR_Nebraska, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Nevada <- bvar.sv.tvp(vardf.TR_Nevada, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_NewHampshire <- bvar.sv.tvp(vardf.TR_NewHampshire, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_NewJersey <- bvar.sv.tvp(vardf.TR_NewJersey, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_NewMexico <- bvar.sv.tvp(vardf.TR_NewMexico, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_NewYork <- bvar.sv.tvp(vardf.TR_NewYork, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_NorthCarolina <- bvar.sv.tvp(vardf.TR_NorthCarolina, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_NorthDakota <- bvar.sv.tvp(vardf.TR_NorthDakota, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Ohio <- bvar.sv.tvp(vardf.TR_Ohio, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Oklahoma <- bvar.sv.tvp(vardf.TR_Oklahoma, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Oregon <- bvar.sv.tvp(vardf.TR_Oregon, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Pennsylvania <- bvar.sv.tvp(vardf.TR_Pennsylvania, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_SouthCarolina <- bvar.sv.tvp(vardf.TR_SouthCarolina, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_SouthDakota <- bvar.sv.tvp(vardf.TR_SouthDakota, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Tennessee <- bvar.sv.tvp(vardf.TR_Tennessee, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Texas <- bvar.sv.tvp(vardf.TR_Texas, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Utah <- bvar.sv.tvp(vardf.TR_Utah, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Vermont <- bvar.sv.tvp(vardf.TR_Vermont, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Virginia <- bvar.sv.tvp(vardf.TR_Virginia, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Washington <- bvar.sv.tvp(vardf.TR_Washington, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_WestVirginia <- bvar.sv.tvp(vardf.TR_WestVirginia, p = 2, nburn = nburn, nrep = nrep)
+fit.TR_Wisconsin <- bvar.sv.tvp(vardf.TR_Wisconsin, p = 2, nburn = nburn, nrep = nrep)
+
+
+
+fit.NTR_Alabama <- bvar.sv.tvp(vardf.NTR_Alabama, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Alaska <- bvar.sv.tvp(vardf.NTR_Alaska, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Arizona <- bvar.sv.tvp(vardf.NTR_Arizona, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Arkansas <- bvar.sv.tvp(vardf.NTR_Arkansas, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_California <- bvar.sv.tvp(vardf.NTR_California, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Colorado <- bvar.sv.tvp(vardf.NTR_Colorado, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Connecticut <- bvar.sv.tvp(vardf.NTR_Connecticut, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Florida <- bvar.sv.tvp(vardf.NTR_Florida, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Georgia <- bvar.sv.tvp(vardf.NTR_Georgia, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Idaho <- bvar.sv.tvp(vardf.NTR_Idaho, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Illinois <- bvar.sv.tvp(vardf.NTR_Illinois, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Indiana <- bvar.sv.tvp(vardf.NTR_Indiana, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Kansas <- bvar.sv.tvp(vardf.NTR_Kansas, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Kentucky <- bvar.sv.tvp(vardf.NTR_Kentucky, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Louisiana <- bvar.sv.tvp(vardf.NTR_Louisiana, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_lowa <- bvar.sv.tvp(vardf.NTR_lowa, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Maryland <- bvar.sv.tvp(vardf.NTR_Maryland, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Massachusetts <- bvar.sv.tvp(vardf.NTR_Massachusetts, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Michigan <- bvar.sv.tvp(vardf.NTR_Michigan, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Minnesota <- bvar.sv.tvp(vardf.NTR_Minnesota, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Mississippi <- bvar.sv.tvp(vardf.NTR_Mississippi, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Missouri <- bvar.sv.tvp(vardf.NTR_Missouri, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Montana <- bvar.sv.tvp(vardf.NTR_Montana, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Nebraska <- bvar.sv.tvp(vardf.NTR_Nebraska, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Nevada <- bvar.sv.tvp(vardf.NTR_Nevada, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_NewHampshire <- bvar.sv.tvp(vardf.NTR_NewHampshire, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_NewJersey <- bvar.sv.tvp(vardf.NTR_NewJersey, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_NewMexico <- bvar.sv.tvp(vardf.NTR_NewMexico, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_NewYork <- bvar.sv.tvp(vardf.NTR_NewYork, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_NorthCarolina <- bvar.sv.tvp(vardf.NTR_NorthCarolina, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_NorthDakota <- bvar.sv.tvp(vardf.NTR_NorthDakota, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Ohio <- bvar.sv.tvp(vardf.NTR_Ohio, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Oklahoma <- bvar.sv.tvp(vardf.NTR_Oklahoma, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Oregon <- bvar.sv.tvp(vardf.NTR_Oregon, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Pennsylvania <- bvar.sv.tvp(vardf.NTR_Pennsylvania, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_SouthCarolina <- bvar.sv.tvp(vardf.NTR_SouthCarolina, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_SouthDakota <- bvar.sv.tvp(vardf.NTR_SouthDakota, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Tennessee <- bvar.sv.tvp(vardf.NTR_Tennessee, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Texas <- bvar.sv.tvp(vardf.NTR_Texas, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Utah <- bvar.sv.tvp(vardf.NTR_Utah, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Vermont <- bvar.sv.tvp(vardf.NTR_Vermont, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Virginia <- bvar.sv.tvp(vardf.NTR_Virginia, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Washington <- bvar.sv.tvp(vardf.NTR_Washington, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_WestVirginia <- bvar.sv.tvp(vardf.NTR_WestVirginia, p = 2, nburn = nburn, nrep = nrep)
+fit.NTR_Wisconsin <- bvar.sv.tvp(vardf.NTR_Wisconsin, p = 2, nburn = nburn, nrep = nrep)
+
+
+
+
+
+
+
+# Plotting the Impulse Response -------------------------------------------
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Alabama <- impulse.responses(fit.TR_Alabama, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Alabama <- impulse.responses(fit.NTR_Alabama, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Alaska <- impulse.responses(fit.TR_Alaska, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Alaska <- impulse.responses(fit.NTR_Alaska, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Arizona <- impulse.responses(fit.TR_Arizona, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Arizona <- impulse.responses(fit.NTR_Arizona, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Arkansas <- impulse.responses(fit.TR_Arkansas, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Arkansas <- impulse.responses(fit.NTR_Arkansas, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_California <- impulse.responses(fit.TR_California, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_California <- impulse.responses(fit.NTR_California, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Colorado <- impulse.responses(fit.TR_Colorado, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Colorado <- impulse.responses(fit.NTR_Colorado, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Connecticut <- impulse.responses(fit.TR_Connecticut, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Connecticut <- impulse.responses(fit.NTR_Connecticut, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Florida <- impulse.responses(fit.TR_Florida, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Florida <- impulse.responses(fit.NTR_Florida, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Georgia <- impulse.responses(fit.TR_Georgia, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Georgia <- impulse.responses(fit.NTR_Georgia, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Idaho <- impulse.responses(fit.TR_Idaho, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Idaho <- impulse.responses(fit.NTR_Idaho, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Illinois <- impulse.responses(fit.TR_Illinois, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Illinois <- impulse.responses(fit.NTR_Illinois, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Indiana <- impulse.responses(fit.TR_Indiana, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Indiana <- impulse.responses(fit.NTR_Indiana, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Kansas <- impulse.responses(fit.TR_Kansas, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Kansas <- impulse.responses(fit.NTR_Kansas, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Kentucky <- impulse.responses(fit.TR_Kentucky, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Kentucky <- impulse.responses(fit.NTR_Kentucky, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Louisiana <- impulse.responses(fit.TR_Louisiana, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Louisiana <- impulse.responses(fit.NTR_Louisiana, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_lowa <- impulse.responses(fit.TR_lowa, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_lowa <- impulse.responses(fit.NTR_lowa, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Maryland <- impulse.responses(fit.TR_Maryland, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Maryland <- impulse.responses(fit.NTR_Maryland, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Massachusetts <- impulse.responses(fit.TR_Massachusetts, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Massachusetts <- impulse.responses(fit.NTR_Massachusetts, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Michigan <- impulse.responses(fit.TR_Michigan, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Michigan <- impulse.responses(fit.NTR_Michigan, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Minnesota <- impulse.responses(fit.TR_Minnesota, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Minnesota <- impulse.responses(fit.NTR_Minnesota, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Mississippi <- impulse.responses(fit.TR_Mississippi, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Mississippi <- impulse.responses(fit.NTR_Mississippi, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Missouri <- impulse.responses(fit.TR_Missouri, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Missouri <- impulse.responses(fit.NTR_Missouri, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Montana <- impulse.responses(fit.TR_Montana, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Montana <- impulse.responses(fit.NTR_Montana, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Nebraska <- impulse.responses(fit.TR_Nebraska, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Nebraska <- impulse.responses(fit.NTR_Nebraska, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Nevada <- impulse.responses(fit.TR_Nevada, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Nevada <- impulse.responses(fit.NTR_Nevada, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_NewHampshire <- impulse.responses(fit.TR_NewHampshire, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_NewHampshire <- impulse.responses(fit.NTR_NewHampshire, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_NewJersey <- impulse.responses(fit.TR_NewJersey, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_NewJersey <- impulse.responses(fit.NTR_NewJersey, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_NewMexico <- impulse.responses(fit.TR_NewMexico, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_NewMexico <- impulse.responses(fit.NTR_NewMexico, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_NewYork <- impulse.responses(fit.TR_NewYork, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_NewYork <- impulse.responses(fit.NTR_NewYork, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_NorthCarolina <- impulse.responses(fit.TR_NorthCarolina, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_NorthCarolina <- impulse.responses(fit.NTR_NorthCarolina, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_NorthDakota <- impulse.responses(fit.TR_NorthDakota, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_NorthDakota <- impulse.responses(fit.NTR_NorthDakota, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Ohio <- impulse.responses(fit.TR_Ohio, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Ohio <- impulse.responses(fit.NTR_Ohio, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Oklahoma <- impulse.responses(fit.TR_Oklahoma, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Oklahoma <- impulse.responses(fit.NTR_Oklahoma, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Oregon <- impulse.responses(fit.TR_Oregon, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Oregon <- impulse.responses(fit.NTR_Oregon, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Pennsylvania <- impulse.responses(fit.TR_Pennsylvania, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Pennsylvania <- impulse.responses(fit.NTR_Pennsylvania, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_SouthCarolina <- impulse.responses(fit.TR_SouthCarolina, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_SouthCarolina <- impulse.responses(fit.NTR_SouthCarolina, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_SouthDakota <- impulse.responses(fit.TR_SouthDakota, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_SouthDakota <- impulse.responses(fit.NTR_SouthDakota, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Tennessee <- impulse.responses(fit.TR_Tennessee, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Tennessee <- impulse.responses(fit.NTR_Tennessee, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Texas <- impulse.responses(fit.TR_Texas, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Texas <- impulse.responses(fit.NTR_Texas, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Utah <- impulse.responses(fit.TR_Utah, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Utah <- impulse.responses(fit.NTR_Utah, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Vermont <- impulse.responses(fit.TR_Vermont, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Vermont <- impulse.responses(fit.NTR_Vermont, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_Virginia <- impulse.responses(fit.TR_Virginia, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Virginia <- impulse.responses(fit.NTR_Virginia, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2,3,4), 2, byrow = TRUE),
+       widths=c(1,1), heights=c(2,2))
+ira.TR_Washington <- impulse.responses(fit.TR_Washington, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Washington <- impulse.responses(fit.NTR_Washington, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+ira.TR_WestVirginia <- impulse.responses(fit.TR_WestVirginia, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_WestVirginia <- impulse.responses(fit.NTR_WestVirginia, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
+
+
+par(mfrow = c(1, 1))
+layout(matrix(c(1,2), 1, byrow = TRUE),
+      widths=c(1,1), heights=c(2,2))
+ira.TR_Wisconsin <- impulse.responses(fit.TR_Wisconsin, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Tradable Employment")
+ira.NTR_Wisconsin <- impulse.responses(fit.NTR_Wisconsin, impulse.variable = 2, response.variable = 1,nhor = 60)
+mtext("Response of Non-Tradable Employment")
